@@ -3,7 +3,7 @@
  */
 import { Stardasher, Voidblade, PlasmaGhost } from '../ships/index.js';
 import Asteroid from '../items/Asteroid.js';
-import { PowerupManager, AsteroidManager, CollisionManager, EnemyCounter } from './components/index.js';
+import { PowerupManager, AsteroidManager, CollisionManager, EnemyCounter, UIManager, BombManager, EffectsManager, ProjectileManager } from './components/index.js';
 import EnemyBullet from '../enemies/EnemyBullet.js';
 import gameManager from '../Game.js';
 
@@ -15,7 +15,6 @@ class GameScene extends Phaser.Scene {
         this.score = 0;
         this.stars = 0; // Compteur d'étoiles collectées
         this.gameOver = false;
-        this.projectiles = [];
         
         // Pour les astéroïdes et powerups
         this.asteroids = [];
@@ -56,21 +55,7 @@ class GameScene extends Phaser.Scene {
         this.bonusX2Text = null; // Texte du bonus x2
     }
 
-    /**
-     * Retourne un style de texte standardisé avec la police "Electrolize"
-     * @param {number} fontSize - Taille de la police (par défaut: 16)
-     * @param {string} color - Couleur du texte (par défaut: blanc)
-     * @param {string} align - Alignement du texte (par défaut: center)
-     * @returns {object} - Style de texte pour Phaser
-     */
-    getGameFontStyle(fontSize = 16, color = '#FFFFFF', align = 'center') {
-        return {
-            fontFamily: 'Electrolize',
-            fontSize: `${fontSize}px`,
-            color: color,
-            align: align
-        };
-    }
+
 
     init(data) {
         // Récupérer le vaisseau sélectionné du registre
@@ -205,8 +190,17 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // Initialiser les gestionnaires d'abord
+        this.collisionManager = new CollisionManager(this);
+        this.powerupManager = new PowerupManager(this);
+        this.asteroidManager = new AsteroidManager(this);
+        this.uiManager = new UIManager(this);
+        this.bombManager = new BombManager(this);
+        this.effectsManager = new EffectsManager(this);
+        this.projectileManager = new ProjectileManager(this);
+        
         // Créer le fond étoilé
-        this.createStarfield();
+        this.effectsManager.createStarfield();
         
         // Créer l'animation des flammes (pour éviter qu'elle n'apparaisse au centre)
         if (!this.anims.exists('flamme_anim')) {
@@ -231,11 +225,6 @@ class GameScene extends Phaser.Scene {
         // Préparer les textures pour la détection pixel-perfect
         this.prepareTexturesForPixelDetection();
         
-        // Initialiser les gestionnaires
-        this.collisionManager = new CollisionManager(this);
-        this.powerupManager = new PowerupManager(this);
-        this.asteroidManager = new AsteroidManager(this);
-        
         // Position initiale et finale du vaisseau
         const startY = this.game.config.height / 2;
         const endY = this.game.config.height - 100;
@@ -244,7 +233,6 @@ class GameScene extends Phaser.Scene {
         this.createPlayerShip(this.game.config.width / 2, startY);
         
         // Initialiser les tableaux
-        this.projectiles = [];
         this.asteroids = [];
         this.powerups = [];
         
@@ -312,11 +300,11 @@ class GameScene extends Phaser.Scene {
         
         // Créer un texte pour le score (centré en haut)
         this.scoreText = this.add.text(this.game.config.width / 2, 30, '0', 
-            this.getGameFontStyle(24, '#FFFFFF')
+            this.uiManager.getGameFontStyle(24, '#FFFFFF')
         ).setOrigin(0.5);
         
         // Initialiser la couleur du score
-        this.updateScoreColor();
+        this.uiManager.updateScoreColor();
         
         // Créer le compteur d'étoiles (à droite de l'écran)
         this.starIcon = this.add.sprite(this.game.config.width - 65, 30, 'star');
@@ -324,14 +312,14 @@ class GameScene extends Phaser.Scene {
         this.starIcon.play({ key: 'star_anim', repeat: -1 });
         
         this.starText = this.add.text(this.game.config.width - 50, 30, `x${this.stars}`, 
-            this.getGameFontStyle(24, '#F9DE4F')
+            this.uiManager.getGameFontStyle(24, '#F9DE4F')
         ).setOrigin(0, 0.5);
         
         // Créer l'affichage des bombes
-        this.createBombDisplay();
+        this.uiManager.createBombDisplay();
         
         // Créer l'affichage des vies
-        this.createLifeDisplay();
+        this.uiManager.createLifeDisplay();
         
         // Initialiser le compteur d'ennemis
         this.enemyCounter = new EnemyCounter(this);
@@ -417,7 +405,7 @@ class GameScene extends Phaser.Scene {
         if (!this.anims.exists('eliteunit_fly')) {
             this.anims.create({
                 key: 'eliteunit_fly',
-                frames: this.anims.generateFrameNumbers('eliteunit', { start: 0, end: 3 }),
+                frames: this.anims.generateFrameNumbers('eliteunit', { start: 0, end: 2 }),
                 frameRate: 10,
                 repeat: -1
             });
@@ -608,69 +596,7 @@ class GameScene extends Phaser.Scene {
             });
         }
     }
-    
-    createStarfield() {
-        // Créer le fond noir
-        this.add.rectangle(0, 0, this.game.config.width, this.game.config.height, 0x000022).setOrigin(0);
-        
-        // Créer les conteneurs pour les étoiles
-        this.nearStars = this.add.container(0, 0);
-        this.farStars = this.add.container(0, 0);
-        
-        // Générer des étoiles lointaines (petites et lentes)
-        for (let i = 0; i < 100; i++) {
-            const x = Phaser.Math.Between(0, this.game.config.width);
-            const y = Phaser.Math.Between(0, this.game.config.height);
-            const size = Phaser.Math.Between(1, 2);
-            const alpha = Phaser.Math.FloatBetween(0.3, 0.6);
-            
-            const star = this.add.rectangle(x, y, size, size, 0xFFFFFF)
-                .setAlpha(alpha);
-            
-            this.farStars.add(star);
-        }
-        
-        // Générer des étoiles proches (plus grandes et rapides)
-        for (let i = 0; i < 50; i++) {
-            const x = Phaser.Math.Between(0, this.game.config.width);
-            const y = Phaser.Math.Between(0, this.game.config.height);
-            const size = Phaser.Math.Between(2, 3);
-            const alpha = Phaser.Math.FloatBetween(0.7, 1);
-            
-            const star = this.add.rectangle(x, y, size, size, 0xFFFFFF)
-                .setAlpha(alpha);
-            
-            this.nearStars.add(star);
-        }
-        
-        // Vitesses de scrolling
-        this.farStarsSpeed = 0.5;
-        this.nearStarsSpeed = 2;
-    }
-    
-    updateStarfield() {
-        // Mettre à jour les étoiles lointaines
-        this.farStars.each(star => {
-            star.y += this.farStarsSpeed;
-            
-            // Réinitialiser la position si l'étoile sort de l'écran
-            if (star.y > this.game.config.height) {
-                star.y = -5;
-                star.x = Phaser.Math.Between(0, this.game.config.width);
-            }
-        });
-        
-        // Mettre à jour les étoiles proches
-        this.nearStars.each(star => {
-            star.y += this.nearStarsSpeed;
-            
-            // Réinitialiser la position si l'étoile sort de l'écran
-            if (star.y > this.game.config.height) {
-                star.y = -5;
-                star.x = Phaser.Math.Between(0, this.game.config.width);
-            }
-        });
-    }
+
     
     showGameText() {
         // Cette méthode doit rester vide pour que this.scoreText (créé dans create() et centré)
@@ -684,7 +610,7 @@ class GameScene extends Phaser.Scene {
 
 
         // Nettoyer les effets du bonus X2 immédiatement
-        this.clearBonusX2Effects();
+        this.effectsManager.clearBonusX2Effects();
 
         // Arrêter la musique de fond si elle joue
         if (this.backgroundMusic && this.backgroundMusic.isPlaying) {
@@ -726,7 +652,7 @@ class GameScene extends Phaser.Scene {
         this.projectiles = [];
 
         // Nettoyer les effets bonus X2
-        this.clearBonusX2Effects();
+        this.effectsManager.clearBonusX2Effects();
 
         // Délai avant de passer à l'écran de Game Over
         this.time.delayedCall(2000, () => {
@@ -739,73 +665,11 @@ class GameScene extends Phaser.Scene {
         });
     }
     
-    updateScore(points) {
-        // Appliquer le multiplicateur si le bonus x2 est actif
-        const finalPoints = points * this.scoreMultiplier;
-        
-        // Mettre à jour le score
-        this.score += finalPoints;
-        
-        // Mettre à jour le texte du score (seulement le chiffre)
-        this.scoreText.setText(`${this.score}`);
-        
-        // Maintenir la couleur jaune si le bonus x2 est actif
-        this.updateScoreColor();
-        
-        // Effet de flash sur le texte du score (plus intense si bonus x2)
-        this.tweens.add({
-            targets: this.scoreText,
-            scale: this.scoreMultiplier > 1 ? 1.4 : 1.2,
-            duration: 100,
-            yoyo: true,
-            onComplete: () => {
-                // Remettre la couleur appropriée après l'animation
-                this.updateScoreColor();
-            }
-        });
-        
-        // Si bonus x2 actif, effet de couleur dorée temporaire en plus
-        if (this.scoreMultiplier > 1) {
-            this.tweens.add({
-                targets: this.scoreText,
-                tint: 0xFFFF00, // Couleur jaune plus vive pendant le flash
-                duration: 200,
-                yoyo: true,
-                onComplete: () => {
-                    // Remettre la couleur jaune normale après le flash
-                    this.updateScoreColor();
-                }
-            });
-        }
-    }
+
     
-    /**
-     * Met à jour la couleur du score en fonction de l'état du bonus x2
-     */
-    updateScoreColor() {
-        if (this.bonusX2Active || this.scoreMultiplier > 1) {
-            // Couleur jaune pendant le bonus x2
-            this.scoreText.setTint(0xFFD700);
-        } else {
-            // Couleur blanche normale
-            this.scoreText.clearTint();
-        }
-    }
+
     
-    /**
-     * Met à jour le compteur d'étoiles
-     */
-    updateStarCount() {
-        this.starText.setText(`x${this.stars}`);
-        
-        // Effet de flash sur le texte des étoiles
-        this.tweens.add({
-            targets: this.starText,
-            scale: 1.2,
-            duration: 100,
-            yoyo: true
-        });
-    }
+
     
     /**
      * Gère l'apparition d'un astéroïde à un intervalle aléatoire
@@ -823,7 +687,7 @@ class GameScene extends Phaser.Scene {
         }
         
         // Mettre à jour le fond étoilé
-        this.updateStarfield();
+        this.effectsManager.updateStarfield();
         
         // Faire apparaître des astéroïdes à intervalle régulier
         this.spawnAsteroid(time);
@@ -853,7 +717,7 @@ class GameScene extends Phaser.Scene {
             if (spaceKeyHoldDuration >= this.minBombChargeDelay && !this.isChargingBomb) {
                 this.isChargingBomb = true;
                 this.bombChargeTime = 0;
-                this.createBombChargeCircle();
+                this.bombManager.createBombChargeCircle();
                 this.canShoot = false; // Empêcher le tir une fois le chargement commencé
             }
             
@@ -863,22 +727,20 @@ class GameScene extends Phaser.Scene {
                 this.bombChargeTime += delta;
                 
                 // Mettre à jour la jauge circulaire
-                this.updateBombChargeCircle(this.bombChargeTime / this.bombChargeDuration);
+                this.bombManager.updateBombChargeCircle(this.bombChargeTime / this.bombChargeDuration);
                 
                 // Si le chargement est complet, lancer la bombe
                 if (this.bombChargeTime >= this.bombChargeDuration) {
                     this.isChargingBomb = false;
-                    this.removeBombChargeCircle();
-                    this.launchBomb();
+                    this.bombManager.removeBombChargeCircle();
+                    this.bombManager.launchBomb();
                 }
             }
             // Si appui court et possibilité de tirer
             else if (spaceKeyHoldDuration < this.minBombChargeDelay && this.canShoot) {
-                // Tirer un projectile
-                const newProjectiles = this.player.shoot((projectile) => {
-                    this.projectiles.push(projectile);
-                });
-                // La gestion des projectiles est maintenant faite dans le callback
+                // Tirer un projectile via le ProjectileManager
+                const newProjectiles = this.projectileManager.playerShoot(this.player);
+                // La gestion des projectiles est maintenant faite dans le ProjectileManager
                 this.canShoot = false; // Empêcher de tirer à nouveau avant de relâcher la touche
             }
         } 
@@ -891,7 +753,7 @@ class GameScene extends Phaser.Scene {
             if (this.isChargingBomb) {
                 this.isChargingBomb = false;
                 this.bombChargeTime = 0;
-                this.removeBombChargeCircle();
+                this.bombManager.removeBombChargeCircle();
             }
             
             // Réactiver la possibilité de tirer
@@ -901,9 +763,9 @@ class GameScene extends Phaser.Scene {
         // Vérifier si le joueur utilise une bombe avec la touche B (méthode alternative)
         if (Phaser.Input.Keyboard.JustDown(this.bombKey) && !this.bombAnimationInProgress) {
             if (this.bombCount > 0) {
-                this.launchBomb();
+                this.bombManager.launchBomb();
             } else {
-                this.shakePlayer();
+                this.bombManager.shakePlayer();
             }
         }
         
@@ -925,11 +787,11 @@ class GameScene extends Phaser.Scene {
             
             // Vérifier les collisions avec les projectiles seulement si les collisions sont activées
             if (!this.collisionsDisabled && this.enemyManager) { // Vérification supplémentaire
-                const scoreFromHits = this.enemyManager.checkProjectileCollisions(this.projectiles);
+                const scoreFromHits = this.enemyManager.checkProjectileCollisions(this.projectileManager.getProjectiles());
                 
                 // Mettre à jour le score si nécessaire
                 if (scoreFromHits > 0) {
-                    this.updateScore(scoreFromHits);
+                    this.uiManager.updateScore(scoreFromHits);
                 }
                 
                 // Vérifier les collisions entre le joueur et les ennemis si le joueur n'est pas invincible
@@ -940,52 +802,14 @@ class GameScene extends Phaser.Scene {
             }
         }
         
-        // Mettre à jour manuellement la position des projectiles et nettoyer ceux qui sont hors écran
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            const projectile = this.projectiles[i];
-            
-            // Déplacer le projectile selon sa trajectoire
-            if (projectile.isAngledProjectile) {
-                // Pour les projectiles avec trajectoire angulaire (Voidblade)
-                projectile.x += projectile.speedX * (1/60);
-                projectile.y += projectile.speedY * (1/60);
-            } else if (projectile.isBackLaser) {
-                // Pour les lasers arrière (Plasma Ghost niveau 2+)
-                projectile.y -= projectile.speed * (1/60); // La vitesse est déjà négative
-            } else if (projectile.isHorizontalLaser) {
-                // Pour les lasers horizontaux (Plasma Ghost niveau 3)
-                projectile.x += projectile.speedX * (1/60);
-                projectile.y += projectile.speedY * (1/60); // speedY est 0 pour les lasers horizontaux
-            } else {
-                // Pour les projectiles standard (mouvement vertical)
-                projectile.y -= projectile.speed * (1/60); // Approximation du delta time
-            }
-            
-            // Vérifier les collisions avec les astéroïdes seulement si les collisions sont activées
-            if (!this.collisionsDisabled) {
-                this.checkAsteroidCollisions(projectile);
-            }
-            
-            // Vérifier si le projectile est sorti de l'écran
-            if (projectile.y < -20 || projectile.y > this.game.config.height + 20 || projectile.x < -20 || projectile.x > this.game.config.width + 20) {
-                // Supprimer les particules associées si elles existent
-                if (projectile.particles) {
-                    projectile.particles.destroy();
-                }
-                
-                // Détruire le sprite
-                projectile.destroy();
-                
-                // Retirer du tableau
-                this.projectiles.splice(i, 1);
-            }
-        }
+        // Mettre à jour les projectiles via le ProjectileManager
+        this.projectileManager.update(delta);
         
         // Mettre à jour les powerups et vérifier les collisions
         this.updatePowerups(delta);
         
         // Gérer l'expiration du bonus x2
-        this.updateBonusX2(time);
+        this.effectsManager.updateBonusX2(time);
         
         // Mettre à jour le compteur d'ennemis (pour le bonus x3)
         if (this.enemyCounter) {
@@ -993,15 +817,7 @@ class GameScene extends Phaser.Scene {
         }
     }
     
-    /**
-     * Vérifie les collisions entre un projectile et les astéroïdes
-     * @param {Phaser.GameObjects.Sprite} projectile - Le projectile à vérifier
-     * @returns {boolean} - Vrai si une collision a eu lieu
-     */
-    checkAsteroidCollisions(projectile) {
-        // Déléguer la vérification des collisions au gestionnaire d'astéroïdes
-        return this.asteroidManager.checkProjectileCollisions(projectile);
-    }
+
     
     /**
      * Met à jour les powerups et gère les collisions avec le joueur
@@ -1016,42 +832,42 @@ class GameScene extends Phaser.Scene {
             if (powerup.type === 'weapon') {
                 // Si niveau de tir max atteint, bonus de score
                 if (this.player.shootLevel >= 3) {
-                    this.updateScore(500);
+                    this.uiManager.updateScore(500);
                     // Flash jaune car niveau max déjà atteint
-                    this.createWeaponPowerupEffect(true);
+                    this.effectsManager.createWeaponPowerupEffect(true);
                 } else {
                     this.player.upgradeShoot();
                     // Flash vert car amélioration effective
-                    this.createWeaponPowerupEffect(false);
+                    this.effectsManager.createWeaponPowerupEffect(false);
                 }
             } else if (powerup.type === 'bomb') {
                 // Si nombre max de bombes atteint, bonus de score
                 if (this.bombCount >= this.maxBombs) {
-                    this.updateScore(500);
+                    this.uiManager.updateScore(500);
                     // Flash rouge car niveau max déjà atteint
-                    this.createPowerupFlashEffect('red');
+                    this.effectsManager.createPowerupFlashEffect('red');
                 } else {
                     this.bombCount++;
-                    this.updateBombDisplay();
+                    this.uiManager.updateBombDisplay();
                     // Flash rouge car amélioration effective
-                    this.createPowerupFlashEffect('red');
+                    this.effectsManager.createPowerupFlashEffect('red');
                 }
             } else if (powerup.type === 'star') {
                 // Bonus de score pour les étoiles
-                this.updateScore(100);
+                this.uiManager.updateScore(100);
                 
                 // Augmenter le compteur d'étoiles
                 this.stars++;
-                this.updateStarCount();
+                this.uiManager.updateStarCount();
                 
                 // Flash violet pour les étoiles
-                this.createPowerupFlashEffect('purple');
+                this.effectsManager.createPowerupFlashEffect('purple');
             } else if (powerup.type === 'bonusx2') {
                 // Activer le bonus x2 pendant 10 secondes
-                this.activateBonusX2(10000); // 10 secondes en millisecondes
+                this.effectsManager.activateBonusX2(10000); // 10 secondes en millisecondes
                 
                 // Flash jaune pour le bonus x2
-                this.createPowerupFlashEffect('yellow');
+                this.effectsManager.createPowerupFlashEffect('yellow');
             }
         });
     }
@@ -1098,471 +914,17 @@ class GameScene extends Phaser.Scene {
         return false;
     }
 
-    /**
-     * Crée l'affichage graphique du compteur de bombes
-     */
-    createBombDisplay() {
-        // Nettoyer les icônes précédentes si elles existent
-        this.bombIcons.forEach(icon => icon.destroy());
-        this.bombIcons = [];
-        
-        // Position de départ pour la première bombe (en bas à gauche)
-        const startX = 30;
-        const startY = this.game.config.height - 30;
-        const spacing = 24; // Espacement entre les bombes
-        
-        // Créer les icônes pour chaque emplacement de bombe
-        for (let i = 0; i < this.maxBombs; i++) {
-            // Choisir l'image selon si la bombe est disponible ou non
-            const textureKey = i < this.bombCount ? 'bomb' : 'bomb_empty';
-            
-            // Créer le sprite
-            const bombIcon = this.add.image(startX + i * spacing, startY, textureKey);
-            bombIcon.setScale(2); // Scale x2
-            bombIcon.setOrigin(0.5);
-            
-            // Ajouter au tableau pour pouvoir les mettre à jour plus tard
-            this.bombIcons.push(bombIcon);
-        }
-    }
-    
-    /**
-     * Met à jour l'affichage du compteur de bombes
-     */
-    updateBombDisplay() {
-        for (let i = 0; i < this.maxBombs; i++) {
-            // Mettre à jour la texture selon l'état actuel
-            const textureKey = i < this.bombCount ? 'bomb' : 'bomb_empty';
-            this.bombIcons[i].setTexture(textureKey);
-        }
-    }
-    
-    /**
-     * Utilise une bombe si disponible
-     * @returns {boolean} - Vrai si une bombe a été utilisée
-     */
-    useBomb() {
-        if (this.bombCount > 0) {
-            this.bombCount--;
-            this.updateBombDisplay();
-            return true;
-        }
-        return false;
-    }
 
-    /**
-     * Crée la jauge circulaire de chargement de la bombe
-     */
-    createBombChargeCircle() {
-        // Supprimer l'ancienne jauge si elle existe
-        this.removeBombChargeCircle();
-        
-        // Créer un graphique pour la jauge
-        this.bombChargeCircle = this.add.graphics();
-        
-        // Définir la position et le rayon
-        this.bombChargeCircleRadius = 40; // Rayon de la jauge
-    }
     
-    /**
-     * Met à jour la jauge circulaire en fonction de la progression
-     * @param {number} progress - Progression du chargement (0 à 1)
-     */
-    updateBombChargeCircle(progress) {
-        if (!this.bombChargeCircle) return;
-        
-        // Nettoyer le graphique
-        this.bombChargeCircle.clear();
-        
-        // Position du cercle (autour du vaisseau du joueur)
-        const x = this.player.shipGroup.x;
-        const y = this.player.shipGroup.y;
-        
-        // Dessiner le cercle de fond (gris transparent)
-        this.bombChargeCircle.fillStyle(0xAAAAAA, 0.3);
-        this.bombChargeCircle.fillCircle(x, y, this.bombChargeCircleRadius);
-        
-        // Dessiner le cercle de progression (bleu)
-        if (progress > 0) {
-            // Calculer l'angle (en radians) pour l'arc de progression
-            const startAngle = -Math.PI / 2; // Commencer en haut
-            const endAngle = startAngle + (Math.PI * 2 * progress);
-            
-            // Dessiner l'arc de progression
-            this.bombChargeCircle.fillStyle(0x0D7DE4, 0.6);
-            this.bombChargeCircle.beginPath();
-            this.bombChargeCircle.arc(x, y, this.bombChargeCircleRadius, startAngle, endAngle, false);
-            this.bombChargeCircle.lineTo(x, y);
-            this.bombChargeCircle.closePath();
-            this.bombChargeCircle.fillPath();
-            
-            // Ajouter un contour au cercle
-            this.bombChargeCircle.lineStyle(2, 0x0D7DE4, 1);
-            this.bombChargeCircle.strokeCircle(x, y, this.bombChargeCircleRadius);
-        }
-    }
-    
-    /**
-     * Supprime la jauge circulaire
-     */
-    removeBombChargeCircle() {
-        if (this.bombChargeCircle) {
-            this.bombChargeCircle.destroy();
-            this.bombChargeCircle = null;
-        }
-    }
-    
-    /**
-     * Fait vibrer le vaisseau du joueur (effet visuel quand pas de bombe disponible)
-     */
-    shakePlayer() {
-        if (this.player && this.player.shipGroup) {
-            // Sauvegarder la position originale
-            const originalX = this.player.shipGroup.x;
-            
-            // Créer une séquence de vibration
-            this.tweens.timeline({
-                targets: this.player.shipGroup,
-                tweens: [
-                    { x: originalX - 10, duration: 50 },
-                    { x: originalX + 10, duration: 50 },
-                    { x: originalX - 8, duration: 50 },
-                    { x: originalX + 8, duration: 50 },
-                    { x: originalX - 5, duration: 50 },
-                    { x: originalX + 5, duration: 50 },
-                    { x: originalX, duration: 50 }
-                ]
-            });
-        }
-    }
 
-    /**
-     * Lance une bombe avec l'animation complète
-     */
-    launchBomb() {
-        // Vérifier si on a des bombes disponibles
-        if (this.bombCount <= 0) {
-            this.shakePlayer();
-            return;
-        }
-        
-        // Marquer l'animation comme en cours pour bloquer d'autres actions
-        this.bombAnimationInProgress = true;
-        
-        // Désactiver les collisions pendant toute l'animation
-        this.collisionsDisabled = true;
-        
-        // Sauvegarder la position actuelle du vaisseau
-        const originalX = this.player.shipGroup.x;
-        const originalY = this.player.shipGroup.y;
-        const originalScale = this.player.shipGroup.scale;
-        
-        // Position en bas et au centre de l'écran pour l'animation
-        const centerX = this.game.config.width / 2;
-        const bottomY = this.game.config.height - 60;
-        
-        // Définir une valeur de depth élevée pour le vaisseau pour qu'il soit au-dessus des autres éléments
-        this.player.shipGroup.setDepth(1000);
-        
-        // Étape 1: Zoom progressif et déplacement vers le bas et au centre
-        this.tweens.add({
-            targets: this.player.shipGroup,
-            scale: 15,
-            y: bottomY,
-            x: centerX,
-            duration: 1000,
-            ease: 'Power2',
-            onComplete: () => {
-                // Étape 2: Afficher la bombe devant le vaisseau
-                const bombSprite = this.add.image(
-                    centerX,  // Position X au centre
-                    bottomY - 100, // Juste au-dessus du vaisseau
-                    'bomb'
-                );
-                bombSprite.setScale(10);
-                bombSprite.setDepth(5); // Valeur de depth inférieure au vaisseau
-                
-                // Étape 3: Déplacer la bombe vers le centre de l'écran avec dézoom
-                this.tweens.add({
-                    targets: bombSprite,
-                    scale: 2,
-                    y: this.game.config.height / 2,
-                    duration: 1200,
-                    ease: 'Power1',
-                    onComplete: () => {
-                        // Supprimer le sprite de la bombe
-                        bombSprite.destroy();
-                        
-                        // Étape 4: Créer les explosions aléatoires
-                        this.createRandomExplosions(() => {
-                            // Étape 5: Retour du vaisseau à sa position normale
-                            this.tweens.add({
-                                targets: this.player.shipGroup,
-                                scale: originalScale,
-                                y: originalY,
-                                x: originalX,
-                                duration: 1000,
-                                ease: 'Power2',
-                                onComplete: () => {
-                                    // Animation terminée et réactiver les collisions
-                                    this.bombAnimationInProgress = false;
-                                    this.collisionsDisabled = false;
-                                    
-                                    // Maintenir la depth élevée du vaisseau pour qu'il reste au premier plan
-                                    this.player.shipGroup.setDepth(1000);
-                                    
-                                    // Activer l'invincibilité pendant 1 seconde
-                                    this.setPlayerInvincible(1000);
-                                }
-                            });
-                        });
-                        
-                        // Appliquer des dégâts aux ennemis
-                        if (this.enemyManager) {
-                            const score = this.enemyManager.damageAllEnemies(50);
-                            if (score > 0) {
-                                this.updateScore(score);
-                            }
-                        }
-                        
-                        // Décrémenter le compteur de bombes
-                        this.bombCount--;
-                        this.updateBombDisplay();
-                    }
-                });
-            }
-        });
-    }
-    
-    /**
-     * Crée des explosions aléatoires sur l'écran
-     * @param {Function} onComplete - Fonction à appeler une fois toutes les explosions terminées
-     */
-    createRandomExplosions(onComplete) {
-        // Nombre d'explosions à créer
-        const explosionCount = 12;
-        let completedExplosions = 0;
-        
-        // Zone d'exclusion autour du vaisseau
-        const safeZoneY = this.game.config.height - 120;
-        
-        // Fonction pour créer une explosion à une position aléatoire
-        const createExplosion = (index) => {
-            // Position aléatoire (éviter le bas de l'écran où se trouve le joueur)
-            let x = Phaser.Math.Between(50, this.game.config.width - 50);
-            let y = Phaser.Math.Between(50, safeZoneY);
-            
-            // Délai basé sur l'index
-            const delay = index * 100;
-            
-            // Créer l'explosion après le délai
-            this.time.delayedCall(delay, () => {
-                const explosion = this.add.sprite(x, y, 'bomb_explosion');
-                explosion.setScale(Phaser.Math.FloatBetween(1.0, 2.0));
-                explosion.setDepth(6); // Depth plus élevée que la bombe mais inférieure au vaisseau
-                
-                // Jouer l'animation
-                explosion.play('bomb_explode');
-                
-                // Une fois l'animation terminée
-                explosion.on('animationcomplete', () => {
-                    // Supprimer le sprite
-                    explosion.destroy();
-                    
-                    // Incrémenter le compteur
-                    completedExplosions++;
-                    
-                    // Si toutes les explosions sont terminées, appeler la fonction de rappel
-                    if (completedExplosions >= explosionCount && onComplete) {
-                        onComplete();
-                    }
-                });
-            });
-        };
-        
-        // Créer toutes les explosions
-        for (let i = 0; i < explosionCount; i++) {
-            createExplosion(i);
-        }
-    }
-
-    /**
-     * Rend le joueur invincible pendant la durée spécifiée avec effet visuel de clignotement
-     * @param {number} duration - Durée de l'invincibilité en millisecondes
-     */
-    setPlayerInvincible(duration) {
-        if (this.player && this.player.shipGroup) {
-            // Activer l'état d'invincibilité
-            this.playerInvincible = true;
-            
-            // Créer l'effet de clignotement
-            const blinkTween = this.tweens.add({
-                targets: this.player.shipGroup,
-                alpha: 0.3,
-                duration: 100,
-                yoyo: true,
-                repeat: Math.floor(duration / 200), // Répéter pour la durée complète
-                ease: 'Linear'
-            });
-            
-            // Créer le timer pour désactiver l'invincibilité
-            this.invincibilityTimer = this.time.delayedCall(duration, () => {
-                // Désactiver l'invincibilité
-                this.playerInvincible = false;
-                
-                // S'assurer que l'alpha est revenu à 1
-                this.player.shipGroup.alpha = 1;
-                
-                // Arrêter le clignotement si encore actif
-                if (blinkTween && blinkTween.isPlaying()) {
-                    blinkTween.stop();
-                    this.player.shipGroup.alpha = 1;
-                }
-                
-                this.invincibilityTimer = null;
-            }, null, this);
-        }
-    }
-
-    /**
-     * Active le bonus x2 pour une durée donnée
-     * @param {number} duration - Durée en millisecondes
-     */
-    activateBonusX2(duration) {
-        // Activer le multiplicateur
-        this.scoreMultiplier = 2;
-        this.bonusX2Active = true;
-        this.bonusX2EndTime = this.time.now + duration;
-        
-        // Appliquer immédiatement la couleur jaune au score
-        this.updateScoreColor();
-        
-        // Créer le texte du bonus x2
-        this.bonusX2Text = this.add.text(
-            this.game.config.width / 2,
-            this.game.config.height - 50,
-            'SCORE x2!',
-            this.getGameFontStyle(20, '#FFD700')
-        ).setOrigin(0.5);
-        
-        // Animation pulsante du texte
-        this.tweens.add({
-            targets: this.bonusX2Text,
-            scale: 1.2,
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-    }
-    
-    /**
-     * Met à jour le status du bonus x2
-     * @param {number} time - Temps actuel
-     */
-    updateBonusX2(time) {
-        if (this.bonusX2Active && time >= this.bonusX2EndTime) {
-            this.clearBonusX2Effects();
-        }
-    }
     
 
 
-    clearBonusX2Effects() {
-        // S'assurer que le multiplicateur de score est réinitialisé si ce n'est pas déjà fait
-        this.scoreMultiplier = 1;
-        this.bonusX2Active = false;
-        
-        // Supprimer le texte du bonus x2
-        if (this.bonusX2Text) {
-            this.bonusX2Text.destroy();
-            this.bonusX2Text = null;
-        }
-        
-        // Remettre la couleur normale du score
-        this.updateScoreColor();
-    }
 
-    /**
-     * Crée un flash de toute la fenêtre lors d'un powerup d'arme
-     * @param {boolean} isMaxLevel - Si true, flash jaune (niveau max atteint), sinon flash vert
-     */
-    createWeaponPowerupEffect(isMaxLevel = false) {
-        // Choisir la couleur selon le niveau
-        const flashColor = isMaxLevel ? 0xFFD700 : 0x00FF00; // Jaune ou vert
-        this.createPowerupFlash(flashColor);
-    }
-
-    /**
-     * Crée un flash de couleur spécifique pour les powerups
-     * @param {string} colorName - Nom de la couleur ('red', 'yellow', 'purple', etc.)
-     */
-    createPowerupFlashEffect(colorName) {
-        let flashColor;
-        
-        switch (colorName) {
-            case 'red':
-                flashColor = 0xFF0000;
-                break;
-            case 'yellow':
-                flashColor = 0xFFD700;
-                break;
-            case 'purple':
-                flashColor = 0x8A2BE2;
-                break;
-            case 'green':
-                flashColor = 0x00FF00;
-                break;
-            default:
-                flashColor = 0xFFFFFF; // Blanc par défaut
-                break;
-        }
-        
-        this.createPowerupFlash(flashColor);
-    }
-
-    /**
-     * Crée un flash de toute la fenêtre avec la couleur spécifiée
-     * @param {number} flashColor - Couleur hexadécimale du flash
-     */
-    createPowerupFlash(flashColor) {
-        // Créer un rectangle qui couvre toute la fenêtre
-        const flashOverlay = this.add.rectangle(
-            this.game.config.width / 2,
-            this.game.config.height / 2,
-            this.game.config.width,
-            this.game.config.height,
-            flashColor,
-            0.5
-        );
-        
-        // Mettre au premier plan
-        flashOverlay.setDepth(2000);
-        
-        // Animation de flash : apparition rapide puis disparition plus lente
-        this.tweens.add({
-            targets: flashOverlay,
-            alpha: { from: 0.5, to: 0 },
-            duration: 1000, // 1 seconde
-            ease: 'Power2',
-            onComplete: () => {
-                flashOverlay.destroy();
-            }
-        });
-        
-        // Effet de pulsation supplémentaire pour plus d'impact
-        this.tweens.add({
-            targets: flashOverlay,
-            scale: { from: 1, to: 1.08 },
-            duration: 500,
-            yoyo: true,
-            ease: 'Sine.easeInOut'
-        });
-    }
 
     destroy() {
         // Nettoyer l'effet de glow
-        this.clearBonusX2Effects();
+        this.effectsManager.clearBonusX2Effects();
         
         // Appeler la méthode destroy de CollisionManager pour nettoyer les ressources
         if (this.collisionManager) {
@@ -1574,6 +936,12 @@ class GameScene extends Phaser.Scene {
         if (this.enemyCounter) {
             this.enemyCounter.destroy();
             this.enemyCounter = null;
+        }
+        
+        // Nettoyer les projectiles
+        if (this.projectileManager) {
+            this.projectileManager.destroy();
+            this.projectileManager = null;
         }
         
         // Autres nettoyages potentiels de la scène...
@@ -1589,7 +957,7 @@ class GameScene extends Phaser.Scene {
         
         // Perdre une vie
         this.lives--;
-        this.updateLifeDisplay();
+        this.uiManager.updateLifeDisplay();
         
         // Réinitialiser les powerups d'armes du joueur
         this.resetPlayerWeapons();
@@ -1612,7 +980,7 @@ class GameScene extends Phaser.Scene {
             this.handleGameOver();
         } else {
             // Activer l'invincibilité temporaire avec clignotement (2 secondes)
-            this.setPlayerInvincible(2000);
+            this.effectsManager.setPlayerInvincible(2000);
         }
     }
     
@@ -1625,67 +993,9 @@ class GameScene extends Phaser.Scene {
         }
     }
     
-    /**
-     * Crée l'affichage graphique du compteur de vies
-     */
-    createLifeDisplay() {
-        // Nettoyer les icônes précédentes si elles existent
-        this.lifeIcons.forEach(icon => icon.destroy());
-        this.lifeIcons = [];
-        
-        // Déterminer l'asset du pilote selon le vaisseau sélectionné
-        let pilotTextureKey;
-        switch (this.selectedShip) {
-            case 'spaceship1':
-                pilotTextureKey = 'pilot1_life';
-                break;
-            case 'spaceship2':
-                pilotTextureKey = 'pilot2_life';
-                break;
-            case 'spaceship3':
-                pilotTextureKey = 'pilot3_life';
-                break;
-            default:
-                pilotTextureKey = 'pilot1_life';
-                break;
-        }
-        
-        // Position de départ pour la première vie (en bas à droite, même ligne que les bombes)
-        // Calculer la position de départ pour avoir les vies alignées à droite
-        const endX = this.game.config.width - 30; // Position de la dernière vie
-        const spacing = 37; // Espacement entre les vies (32px + 5px)
-        const startX = endX - (this.maxLives - 1) * spacing; // Position de la première vie
-        const startY = this.game.config.height - 30; // Même hauteur que les bombes
-        
-        // Afficher d'abord les vies disponibles (pilotes) de gauche à droite
-        let iconIndex = 0;
-        
-        // D'abord afficher les vies disponibles (pilotes) de gauche à droite
-        for (let i = 0; i < this.lives; i++) {
-            const lifeIcon = this.add.image(startX + iconIndex * spacing, startY, pilotTextureKey);
-            lifeIcon.setScale(0.25); // Réduire de 128x128 à 32x32
-            lifeIcon.setOrigin(0.5);
-            this.lifeIcons.push(lifeIcon);
-            iconIndex++;
-        }
-        
-        // Ensuite afficher les vies vides
-        for (let i = this.lives; i < this.maxLives; i++) {
-            const lifeIcon = this.add.image(startX + iconIndex * spacing, startY, 'pilot_life_empty');
-            lifeIcon.setScale(0.25); // Réduire de 128x128 à 32x32
-            lifeIcon.setOrigin(0.5);
-            this.lifeIcons.push(lifeIcon);
-            iconIndex++;
-        }
-    }
+
     
-    /**
-     * Met à jour l'affichage du compteur de vies
-     */
-    updateLifeDisplay() {
-        // Simplement recréer l'affichage pour maintenir l'ordre correct
-        this.createLifeDisplay();
-    }
+
 
     /**
      * Gère la victoire contre le boss final
@@ -1709,7 +1019,7 @@ class GameScene extends Phaser.Scene {
         }
         
         // Nettoyer les effets bonus X2
-        this.clearBonusX2Effects();
+        this.effectsManager.clearBonusX2Effects();
         
         // Utiliser le score réellement affiché à l'écran (this.score contient le score correct)
         const currentScore = this.score;
@@ -1730,14 +1040,14 @@ class GameScene extends Phaser.Scene {
             gameWidth / 2,
             currentY,
             'YOU WIN!',
-            this.getGameFontStyle(48, '#FFFFFF')
+            this.uiManager.getGameFontStyle(48, '#FFFFFF')
         ).setOrigin(0.5);
         
         // Appliquer un effet de dégradé intérieur jaune-rouge au texte
         victoryText.setTint(0xffff00, 0xffff00, 0xff0000, 0xff0000);
         
         // Ajouter un effet de scintillement au titre
-        this.createTitleScintillation(victoryText);
+        this.effectsManager.createTitleScintillation(victoryText);
         
         currentY += 80;
         
@@ -1747,7 +1057,7 @@ class GameScene extends Phaser.Scene {
                 gameWidth / 2,
                 currentY,
                 'Zero star',
-                this.getGameFontStyle(20, '#FFFFFF')
+                this.uiManager.getGameFontStyle(20, '#FFFFFF')
             ).setOrigin(0.5);
             currentY += 40;
             
@@ -1756,7 +1066,7 @@ class GameScene extends Phaser.Scene {
                 gameWidth / 2,
                 currentY,
                 `Total score : ${finalScore.toLocaleString()}`,
-                this.getGameFontStyle(24, '#FFD700')
+                this.uiManager.getGameFontStyle(24, '#FFD700')
             ).setOrigin(0.5);
             
             currentY += 60;
@@ -1774,52 +1084,7 @@ class GameScene extends Phaser.Scene {
         }
     }
     
-    /**
-     * Crée un effet de scintillement pour le titre (copié de LeaderboardScene)
-     * @param {Phaser.GameObjects.Text} textObject - L'objet texte à faire scintiller
-     */
-    createTitleScintillation(textObject) {
-        // Sauvegarder les teintes originales pour pouvoir y revenir
-        const originalTint1 = 0xffff00; // Jaune
-        const originalTint2 = 0xff0000; // Rouge
-        
-        // Créer un effet de pulsation subtile
-        this.tweens.add({
-            targets: textObject,
-            scale: { from: 1, to: 1.05 },
-            duration: 1500,
-            ease: 'Sine.easeInOut',
-            yoyo: true,
-            repeat: -1
-        });
-        
-        // Créer un effet de scintillement aléatoire
-        const scintillateText = () => {
-            // Générer un point de scintillement aléatoire (une lettre aléatoire)
-            const letterIndex = Phaser.Math.Between(0, textObject.text.length - 1);
-            
-            // Créer un effet de flash blanc pour une lettre spécifique
-            textObject.setTint(
-                letterIndex === 0 ? 0xffffff : originalTint1,
-                letterIndex === 1 ? 0xffffff : originalTint1,
-                letterIndex === 2 ? 0xffffff : originalTint2, 
-                letterIndex === 3 ? 0xffffff : originalTint2
-            );
-            
-            // Retour aux couleurs d'origine après un court délai
-            this.time.delayedCall(100, () => {
-                if (textObject && textObject.scene) {
-                    textObject.setTint(originalTint1, originalTint1, originalTint2, originalTint2);
-                    
-                    // Planifier le prochain scintillement à intervalle aléatoire
-                    this.time.delayedCall(Phaser.Math.Between(200, 800), scintillateText);
-                }
-            });
-        };
-        
-        // Démarrer l'effet de scintillement
-        scintillateText();
-    }
+
     
     /**
      * Affiche les étoiles une par une avec effet de zoom
@@ -1895,7 +1160,7 @@ class GameScene extends Phaser.Scene {
             gameWidth / 2,
             currentY,
             `Total score : ${startScore.toLocaleString()}`,
-            this.getGameFontStyle(24, '#FFD700')
+            this.uiManager.getGameFontStyle(24, '#FFD700')
         ).setOrigin(0.5);
         
         // Animer le compteur de score
@@ -1944,7 +1209,7 @@ class GameScene extends Phaser.Scene {
                 gameWidth / 2,
                 currentY,
                 'NEW HIGH SCORE!',
-                this.getGameFontStyle(28, '#FFD700')
+                this.uiManager.getGameFontStyle(28, '#FFD700')
             ).setOrigin(0.5);
             
             // Effet de clignotement
@@ -1963,7 +1228,7 @@ class GameScene extends Phaser.Scene {
                 gameWidth / 2,
                 currentY,
                 'Press SPACE to enter your name',
-                this.getGameFontStyle(16, '#777777') // Texte grisé initialement
+                this.uiManager.getGameFontStyle(16, '#777777') // Texte grisé initialement
             ).setOrigin(0.5);
             
             // Désactiver la touche Espace pendant 2 secondes
@@ -1972,7 +1237,7 @@ class GameScene extends Phaser.Scene {
             // Activer la touche après 2 secondes
             this.time.delayedCall(2000, () => {
                 // Changer la couleur du texte pour indiquer que la touche est active
-                instructionText.setStyle(this.getGameFontStyle(16, '#FFFFFF'));
+                instructionText.setStyle(this.uiManager.getGameFontStyle(16, '#FFFFFF'));
                 
                 // Effet de clignotement pour les instructions
                 this.tweens.add({
@@ -2008,7 +1273,7 @@ class GameScene extends Phaser.Scene {
                 gameWidth / 2,
                 currentY,
                 'Press SPACE to return to title',
-                this.getGameFontStyle(16, '#777777') // Texte grisé initialement
+                this.uiManager.getGameFontStyle(16, '#777777') // Texte grisé initialement
             ).setOrigin(0.5);
             
             // Désactiver la touche Espace pendant 2 secondes
@@ -2017,7 +1282,7 @@ class GameScene extends Phaser.Scene {
             // Activer la touche après 2 secondes
             this.time.delayedCall(2000, () => {
                 // Changer la couleur du texte pour indiquer que la touche est active
-                instructionText.setStyle(this.getGameFontStyle(16, '#FFFFFF'));
+                instructionText.setStyle(this.uiManager.getGameFontStyle(16, '#FFFFFF'));
                 
                 // Effet de clignotement pour les instructions
                 this.tweens.add({

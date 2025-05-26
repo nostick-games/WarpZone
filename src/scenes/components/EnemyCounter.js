@@ -30,21 +30,7 @@ class EnemyCounter {
 
     }
     
-    /**
-     * Retourne un style de texte standardisé avec la police "Electrolize"
-     * @param {number} fontSize - Taille de la police (par défaut: 16)
-     * @param {string} color - Couleur du texte (par défaut: blanc)
-     * @param {string} align - Alignement du texte (par défaut: center)
-     * @returns {object} - Style de texte pour Phaser
-     */
-    getGameFontStyle(fontSize = 16, color = '#FFFFFF', align = 'center') {
-        return {
-            fontFamily: 'Electrolize',
-            fontSize: `${fontSize}px`,
-            color: color,
-            align: align
-        };
-    }
+
     
     /**
      * Crée la jauge arc-en-ciel en bas de l'écran
@@ -127,14 +113,14 @@ class EnemyCounter {
      */
     giveExtraLife() {
         this.scene.lives++;
-        this.scene.updateLifeDisplay();
+        this.scene.uiManager.updateLifeDisplay();
         
         // Créer le texte "1-UP!" avec le même style que les bonus
         const oneUpText = this.scene.add.text(
             this.scene.game.config.width / 2,
             this.scene.game.config.height - 50,
             '1-UP!',
-            this.scene.getGameFontStyle(20, '#00FF00') // Vert pour la vie supplémentaire
+            this.scene.uiManager.getGameFontStyle(20, '#00FF00') // Vert pour la vie supplémentaire
         ).setOrigin(0.5);
         
         // Animation pulsante du texte (même que les bonus)
@@ -164,7 +150,7 @@ class EnemyCounter {
         this.scene.scoreMultiplier = 3;
         
         // Appliquer immédiatement la couleur jaune au score
-        this.scene.updateScoreColor();
+        this.scene.uiManager.updateScoreColor();
         
         // Flash jaune pour le bonus x3 (comme le bonus x2)
         this.scene.createPowerupFlashEffect('yellow');
@@ -174,7 +160,7 @@ class EnemyCounter {
             this.scene.game.config.width / 2,
             this.scene.game.config.height - 50,
             'SCORE x3!',
-            this.scene.getGameFontStyle(20, '#FFD700')
+            this.scene.uiManager.getGameFontStyle(20, '#FFD700')
         ).setOrigin(0.5);
         
         // Animation pulsante du texte
@@ -203,7 +189,7 @@ class EnemyCounter {
         this.scene.scoreMultiplier = previousMultiplier;
         
         // Mettre à jour la couleur du score
-        this.scene.updateScoreColor();
+        this.scene.uiManager.updateScoreColor();
         
         // Utiliser le système de nettoyage du bonus x2 pour les effets visuels
         this.scene.clearBonusX2Effects();
