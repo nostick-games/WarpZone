@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insert Coin to Die</title>
+    <!-- Importation de la police Electrolize depuis Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Electrolize&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Variable CSS pour faciliter l'utilisation de la police dans tout le jeu */
+            --game-font: 'Electrolize', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: var(--game-font);
+        }
+        #game-container {
+            width: 360px;
+            height: 640px;
+            margin: 0 auto;
+        }
+    </style>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <!-- Chargement des classes en tant que modules -->
+    <script type="module">
+        // Importer les classes d'ennemis et les rendre disponibles globalement
+        import Unit1 from './src/enemies/Unit1.js';
+        import Saucer from './src/enemies/Saucer.js';
+        import EliteUnit from './src/enemies/EliteUnit.js';
+        import PurpleDeath from './src/enemies/PurpleDeath.js';
+        import Tourelle from './src/enemies/Tourelle.js';
+        import TourelleLeft from './src/enemies/TourelleLeft.js';
+        import BlueBeetle from './src/enemies/BlueBeetle.js';
+        import EnemyManager from './src/enemies/EnemyManager.js';
+        import EnemyBullet from './src/enemies/EnemyBullet.js';
+        
+        // Rendre les classes disponibles globalement
+        window.Unit1 = Unit1;
+        window.Saucer = Saucer;
+        window.EliteUnit = EliteUnit;
+        window.PurpleDeath = PurpleDeath;
+        window.Tourelle = Tourelle;
+        window.TourelleLeft = TourelleLeft;
+        window.BlueBeetle = BlueBeetle;
+        window.EnemyManager = EnemyManager;
+        window.EnemyBullet = EnemyBullet;
+        
+        // Importer les scènes du jeu
+        import TitleScene from './src/scenes/TitleScene.js';
+        import ShipSelectionScene from './src/scenes/ShipSelectionScene.js';
+        import GameScene from './src/scenes/GameScene.js';
+        import DeathScene from './src/scenes/DeathScene.js';
+        import LeaderboardScene from './src/scenes/LeaderboardScene.js';
+        import NameEntryScene from './src/scenes/NameEntryScene.js';
+        
+        // Importer le gestionnaire de jeu
+        import gameManager from './src/Game.js';
+        
+        // Rendre gameManager disponible globalement
+        window.gameManager = gameManager;
+        
+        // Configuration du jeu
+        const config = {
+            type: Phaser.AUTO,
+            width: 360,
+            height: 640,
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            pixelArt: true, // Important pour le style pixel art
+            scene: [
+                TitleScene,
+                ShipSelectionScene,
+                GameScene,
+                DeathScene,
+                LeaderboardScene,
+                NameEntryScene
+            ]
+        };
+        
+        // Créer l'instance du jeu
+        const game = new Phaser.Game(config);
+        
+        // Pour les tests, définir un vaisseau par défaut si nécessaire
+        // Utile si vous voulez démarrer directement avec la scène de jeu
+        // game.registry.set('selectedShip', 'spaceship2');
+    </script>
+</body>
+</html>
