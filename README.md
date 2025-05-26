@@ -27,7 +27,7 @@ Un shoot'em up arcade en JavaScript utilisant Phaser 3. Pilotez votre vaisseau s
 
 Aucune installation n'est nécessaire pour jouer. 
 
-Cliquez ici pour jouer dans votre navigateur : [https://nostick-games.github.io/WarpZone/](url)
+Cliquez ici pour jouer dans votre navigateur : https://nostick-games.github.io/WarpZone/
 
 Vous pouvez aussi :
 
