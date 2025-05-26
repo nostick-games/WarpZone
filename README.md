@@ -1,6 +1,6 @@
 # WarpZone
 
-Un shoot'em up arcade en JavaScript utilisant Phaser 3 (et beaucoup Cursor pour le développement !). Pilotez votre vaisseau spatial, affrontez des vagues d'ennemis, récupérez des power-ups et défiez le boss final pour obtenir le meilleur score.
+Un shoot'em up arcade en JavaScript utilisant Phaser 3. Pilotez votre vaisseau spatial, affrontez des vagues d'ennemis, récupérez des power-ups et défiez le boss final pour obtenir le meilleur score.
 
 ![Capture d'écran du jeu](/screenshots/screen1.jpg)
 
@@ -16,7 +16,6 @@ Un shoot'em up arcade en JavaScript utilisant Phaser 3 (et beaucoup Cursor pour 
 - Bombes spéciales pour éliminer tous les ennemis à l'écran
 - Boss final à combattre
 - Tableau des meilleurs scores
-- Effets visuels impressionnants
 
 ## 🚀 Comment jouer
 
@@ -55,7 +54,8 @@ Puis ouvrez votre navigateur à l'adresse `http://localhost:8000`
 - JavaScript
 - [Phaser 3](https://phaser.io/phaser3) - Framework de jeu HTML5
 - HTML5 Canvas
-- Cursor
+- Cursor (avec Claude 3.7/4)
+- Assets graphiques : [Pixel Space Shooter](https://mattwalkden.itch.io/space-shooter) par Matt Walkden
 
 ## 🎯 À venir
 
