@@ -1,4 +1,4 @@
-# Insert Coin to Die
+# WarpZone
 
 Un shoot'em up arcade en JavaScript utilisant Phaser 3. Pilotez votre vaisseau spatial, affrontez des vagues d'ennemis, récupérez des power-ups et défiez le boss final pour obtenir le meilleur score.
 
@@ -25,7 +25,11 @@ Un shoot'em up arcade en JavaScript utilisant Phaser 3. Pilotez votre vaisseau s
 
 ## 💻 Installation
 
-Aucune installation n'est nécessaire pour jouer. Vous pouvez simplement :
+Aucune installation n'est nécessaire pour jouer. 
+
+Cliquez ici pour jouer dans votre navigateur : [https://nostick-games.github.io/WarpZone/](url)
+
+Vous pouvez aussi :
 
 1. Cloner ce dépôt
 2. Ouvrir le fichier `index.html` dans votre navigateur
