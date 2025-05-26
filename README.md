@@ -2,7 +2,11 @@
 
 Un shoot'em up arcade en JavaScript utilisant Phaser 3 (et beaucoup Cursor pour le développement !). Pilotez votre vaisseau spatial, affrontez des vagues d'ennemis, récupérez des power-ups et défiez le boss final pour obtenir le meilleur score.
 
-![Capture d'écran du jeu](assets/screenshots/screenshot.png)
+![Capture d'écran du jeu](/screenshots/screen1.jpg)
+
+![Capture d'écran du jeu](/screenshots/screen2.jpg)
+
+![Capture d'écran du jeu](/screenshots/screen3.jpg)
 
 ## 🎮 Fonctionnalités
 
