@@ -1,4 +1,4 @@
-# Insert Coin to Die
+# WarpZone
 
 Un shoot'em up arcade en JavaScript utilisant Phaser 3. Pilotez votre vaisseau spatial, affrontez des vagues d'ennemis, récupérez des power-ups et défiez le boss final pour obtenir le meilleur score.
 
