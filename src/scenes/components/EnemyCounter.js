@@ -153,7 +153,7 @@ class EnemyCounter {
         this.scene.uiManager.updateScoreColor();
         
         // Flash jaune pour le bonus x3 (comme le bonus x2)
-        this.scene.createPowerupFlashEffect('yellow');
+        this.scene.effectsManager.createPowerupFlashEffect('yellow');
         
         // Créer le texte du bonus
         this.bonusX3Text = this.scene.add.text(
