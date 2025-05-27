@@ -192,7 +192,7 @@ class EnemyCounter {
         this.scene.uiManager.updateScoreColor();
         
         // Utiliser le système de nettoyage du bonus x2 pour les effets visuels
-        this.scene.clearBonusX2Effects();
+        this.scene.effectsManager.clearBonusX2Effects();
         
         // Supprimer le texte spécifique au bonus x3
         if (this.bonusX3Text) {
