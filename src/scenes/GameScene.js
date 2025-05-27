@@ -180,6 +180,7 @@ class GameScene extends Phaser.Scene {
         this.load.spritesheet('beam_frames', 'assets/enemies/boss/5_beam_frames.png', { frameWidth: 32, frameHeight: 128 });
         
         // Charger les assets d'effets de dégâts du boss BlueBeetle
+        // Fichiers de 128x8 avec 16 frames de 8x8 pixels
         this.load.spritesheet('bluebeetle_degat1', 'assets/enemies/boss/BlueBeetle_degat1.png', { frameWidth: 8, frameHeight: 8 });
         this.load.spritesheet('bluebeetle_degat2', 'assets/enemies/boss/BlueBeetle_degat2.png', { frameWidth: 8, frameHeight: 8 });
         
