@@ -179,6 +179,10 @@ class GameScene extends Phaser.Scene {
         this.load.spritesheet('beam_origin', 'assets/enemies/boss/4_beam_origin.png', { frameWidth: 48, frameHeight: 48 });
         this.load.spritesheet('beam_frames', 'assets/enemies/boss/5_beam_frames.png', { frameWidth: 32, frameHeight: 128 });
         
+        // Charger les assets d'effets de dégâts du boss BlueBeetle
+        this.load.spritesheet('bluebeetle_degat1', 'assets/enemies/boss/BlueBeetle_degat1.png', { frameWidth: 8, frameHeight: 8 });
+        this.load.spritesheet('bluebeetle_degat2', 'assets/enemies/boss/BlueBeetle_degat2.png', { frameWidth: 8, frameHeight: 8 });
+        
         // Charger les assets des pilotes pour les vies
         this.load.image('pilot1_life', 'assets/spaceship/pilot1_life.png');
         this.load.image('pilot2_life', 'assets/spaceship/pilot2_life.png');
@@ -598,6 +602,25 @@ class GameScene extends Phaser.Scene {
                 frames: this.anims.generateFrameNumbers('bomb_explosion', { start: 0, end: 14 }),
                 frameRate: 20,
                 repeat: 0
+            });
+        }
+        
+        // Animations pour les effets de dégâts du boss BlueBeetle
+        if (!this.anims.exists('bluebeetle_degat1_anim')) {
+            this.anims.create({
+                key: 'bluebeetle_degat1_anim',
+                frames: this.anims.generateFrameNumbers('bluebeetle_degat1', { start: 0, end: 15 }),
+                frameRate: 15,
+                repeat: -1
+            });
+        }
+        
+        if (!this.anims.exists('bluebeetle_degat2_anim')) {
+            this.anims.create({
+                key: 'bluebeetle_degat2_anim',
+                frames: this.anims.generateFrameNumbers('bluebeetle_degat2', { start: 0, end: 15 }),
+                frameRate: 15,
+                repeat: -1
             });
         }
     }

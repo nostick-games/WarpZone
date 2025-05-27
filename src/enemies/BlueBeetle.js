@@ -539,16 +539,75 @@ class BlueBeetle {
     }
     
     /**
-     * Crée une explosion pour une aile détruite
+     * Crée une explosion spectaculaire pour une aile détruite
      */
     createWingExplosion(wingSprite) {
         const worldPos = this.container.getWorldTransformMatrix().transformPoint(wingSprite.x, wingSprite.y);
-        const explosion = this.scene.add.sprite(worldPos.x, worldPos.y, 'explosion');
-        explosion.setScale(2);
-        explosion.play('explode');
-        explosion.once('animationcomplete', () => {
-            explosion.destroy();
+        
+        // 1. Explosion principale avec bomb_explosion (15 frames, 64x64)
+        const mainExplosion = this.scene.add.sprite(worldPos.x, worldPos.y, 'bomb_explosion');
+        mainExplosion.setScale(2); // Échelle x2 pour plus d'impact
+        mainExplosion.setDepth(20); // Au-dessus de tout
+        mainExplosion.play('bomb_explode');
+        mainExplosion.once('animationcomplete', () => {
+            mainExplosion.destroy();
         });
+        
+        // 2. Effets de dégâts persistants (BlueBeetle_degat1 et BlueBeetle_degat2)
+        // Créer plusieurs particules de dégâts à des positions aléatoires autour de l'explosion
+        const damageEffects = [];
+        const numEffects = 8; // Nombre d'effets de dégâts
+        
+        for (let i = 0; i < numEffects; i++) {
+            // Position aléatoire autour de l'explosion
+            const offsetX = Phaser.Math.Between(-40, 40);
+            const offsetY = Phaser.Math.Between(-40, 40);
+            const effectX = worldPos.x + offsetX;
+            const effectY = worldPos.y + offsetY;
+            
+            // Alterner entre degat1 et degat2
+            const damageType = (i % 2 === 0) ? 'bluebeetle_degat1' : 'bluebeetle_degat2';
+            const animKey = (i % 2 === 0) ? 'bluebeetle_degat1_anim' : 'bluebeetle_degat2_anim';
+            
+            const damageEffect = this.scene.add.sprite(effectX, effectY, damageType);
+            damageEffect.setScale(Phaser.Math.FloatBetween(1.5, 3)); // Échelle variable pour plus de variété
+            damageEffect.setDepth(15); // Sous l'explosion principale mais au-dessus du boss
+            damageEffect.play(animKey);
+            
+            // Ajouter un léger mouvement aléatoire sur toute la durée
+            this.scene.tweens.add({
+                targets: damageEffect,
+                x: effectX + Phaser.Math.Between(-30, 30),
+                y: effectY + Phaser.Math.Between(-30, 30),
+                alpha: { from: 1, to: 0.4 },
+                duration: 2500, // Mouvement sur 2.5 secondes
+                ease: 'Power2'
+            });
+            
+            damageEffects.push(damageEffect);
+        }
+        
+        // 3. Faire disparaître tous les effets de dégâts après 3 secondes
+        this.scene.time.delayedCall(3000, () => {
+            damageEffects.forEach(effect => {
+                if (effect && effect.active) {
+                    // Animation de disparition
+                    this.scene.tweens.add({
+                        targets: effect,
+                        alpha: 0,
+                        scale: 0.5,
+                        duration: 300,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            effect.destroy();
+                        }
+                    });
+                }
+            });
+        });
+        
+        // 4. Effet de secousse de la caméra pour plus d'impact
+        this.scene.cameras.main.shake(300, 0.01);
     }
     
     /**
