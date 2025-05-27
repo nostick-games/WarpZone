@@ -1,42 +1,86 @@
 /**
  * Classe représentant le boss final BlueBeetle
+ * Version composite avec tronc et ailes séparées
  */
 class BlueBeetle {
     constructor(scene, x, y) {
         this.scene = scene;
         
-        // Créer le sprite du boss
-        this.sprite = scene.add.sprite(x, y, 'bluebeetle').setScale(2);
+        // Créer un conteneur pour tous les composants du boss
+        this.container = scene.add.container(x, y);
+        this.container.setDepth(10);
         
-        // Propriétés du boss
-        this.health = 2500; // Très résistant
-        this.maxHealth = 2500;
-        this.speed = 50; // Vitesse de déplacement
+        // Créer les sprites des composants avec leurs positions relatives
+        this.troncSprite = scene.add.sprite(0, 0, 'bluebeetle_tronc').setScale(2);
+        
+        // Ailes arrière (au milieu du boss)
+        this.aileArDroiteSprite = scene.add.sprite(60, 20, 'bluebeetle_aile_ar_droite').setScale(2);
+        this.aileArGaucheSprite = scene.add.sprite(-60, 20, 'bluebeetle_aile_ar_gauche').setScale(2);
+        
+        // Ailes avant (en bas du boss)
+        this.aileAvDroiteSprite = scene.add.sprite(80, 100, 'bluebeetle_aile_av_droite').setScale(2);
+        this.aileAvGaucheSprite = scene.add.sprite(-80, 100, 'bluebeetle_aile_av_gauche').setScale(2);
+        
+        // Ajouter les sprites au conteneur dans l'ordre de profondeur
+        // (ailes arrière en premier, puis ailes avant, puis tronc au centre)
+        this.container.add([
+            this.aileArDroiteSprite,
+            this.aileArGaucheSprite,
+            this.aileAvDroiteSprite,
+            this.aileAvGaucheSprite,
+            this.troncSprite
+        ]);
+        
+        // Propriétés de santé pour chaque composant
+        this.troncHealth = 500;
+        this.troncMaxHealth = 500;
+        this.aileArDroiteHealth = 250;
+        this.aileArDroiteMaxHealth = 250;
+        this.aileArGaucheHealth = 250;
+        this.aileArGaucheMaxHealth = 250;
+        this.aileAvDroiteHealth = 250;
+        this.aileAvDroiteMaxHealth = 250;
+        this.aileAvGaucheHealth = 250;
+        this.aileAvGaucheMaxHealth = 250;
+        
+        // État des composants
+        this.aileArDroiteDestroyed = false;
+        this.aileArGaucheDestroyed = false;
+        this.aileAvDroiteDestroyed = false;
+        this.aileAvGaucheDestroyed = false;
+        this.troncDestroyed = false;
+        
+        // Propriétés générales du boss
         this.active = true;
-        this.points = 10000; // Beaucoup de points pour le boss final
+        this.points = 10000;
+        this.speed = 50;
         
         // État du boss
-        this.phase = 'entering'; // 'entering', 'moving', 'attacking1', 'attacking2'
-        this.moveCount = 0; // Compteur de déplacements
-        this.maxMoves = 3; // Nombre de déplacements avant attaque
+        this.phase = 'entering';
+        this.moveCount = 0;
+        this.maxMoves = 3;
         this.isMoving = false;
         this.attackInProgress = false;
-        this.attackType = 'bullets'; // 'bullets' ou 'laser' - alterne entre les deux
+        this.attackType = 'bullets';
         
         // Position d'entrée et cible
         this.entryY = y;
-        this.targetY = 150; // Position finale (haut de l'écran mais visible)
+        this.targetY = 150;
         this.targetX = scene.game.config.width / 2;
         
         // Bullets du boss
         this.bullets = [];
         
-        // Animation du sprite
-        if (scene.anims.exists('bluebeetle_fly')) {
-            this.sprite.play('bluebeetle_fly');
+        // Animation du tronc
+        if (scene.anims.exists('bluebeetle_tronc_fly')) {
+            this.troncSprite.play('bluebeetle_tronc_fly');
         }
         
-
+        // Référence du sprite principal pour la compatibilité avec EnemyManager
+        this.sprite = this.container;
+        
+        // Les zones de collision correspondent maintenant aux positions réelles des sprites
+        // (les sprites étant maintenant positionnés correctement, on utilise leurs bounds directement)
         
         // Commencer l'animation d'entrée
         this.startEntryAnimation();
@@ -46,16 +90,13 @@ class BlueBeetle {
      * Animation d'entrée du boss
      */
     startEntryAnimation() {
-
-        
         // Déplacer le boss vers sa position finale
         this.scene.tweens.add({
-            targets: this.sprite,
+            targets: this.container,
             y: this.targetY,
             duration: 3000,
             ease: 'Power2',
             onComplete: () => {
-
                 this.phase = 'moving';
                 this.scheduleNextMove();
             }
@@ -68,7 +109,6 @@ class BlueBeetle {
     scheduleNextMove() {
         if (this.phase !== 'moving' || this.attackInProgress) return;
         
-        // Délai avant le prochain mouvement
         const delay = Phaser.Math.Between(1000, 2000);
         
         this.scene.time.delayedCall(delay, () => {
@@ -84,16 +124,12 @@ class BlueBeetle {
         
         this.isMoving = true;
         
-        // Choisir une position aléatoire (rester dans la partie haute)
         const margin = 100;
         const newX = Phaser.Math.Between(margin, this.scene.game.config.width - margin);
         const newY = Phaser.Math.Between(80, 250);
         
-
-        
-        // Animer le déplacement
         this.scene.tweens.add({
-            targets: this.sprite,
+            targets: this.container,
             x: newX,
             y: newY,
             duration: 1500,
@@ -102,7 +138,6 @@ class BlueBeetle {
                 this.isMoving = false;
                 this.moveCount++;
                 
-                // Vérifier s'il faut attaquer
                 if (this.moveCount >= this.maxMoves) {
                     this.startAttack();
                 } else {
@@ -118,13 +153,12 @@ class BlueBeetle {
     startAttack() {
         this.attackInProgress = true;
         
-        // Alterner entre bullets et laser
         if (this.attackType === 'bullets') {
             this.bulletStorm();
-            this.attackType = 'laser'; // Prochaine attaque sera un laser
+            this.attackType = 'laser';
         } else {
             this.laserBeam();
-            this.attackType = 'bullets'; // Prochaine attaque sera des bullets
+            this.attackType = 'bullets';
         }
     }
     
@@ -132,33 +166,26 @@ class BlueBeetle {
      * Attaque 1: Pluie de bullets en arc de cercle
      */
     bulletStorm() {
-
+        const startX = this.container.x;
+        const startY = this.container.y + 98; // Remonté de 80 pixels (178 - 80 = 98)
         
-        // Position de départ des bullets (nez du boss)
-        const startX = this.sprite.x;
-        const startY = this.sprite.y + 89; // Bas du sprite (178/2 = 89)
-        
-        // Créer 8 bullets en arc de cercle
         const bulletCount = 8;
-        const startAngle = Math.PI * 0.25; // 45 degrés
-        const endAngle = Math.PI * 0.75; // 135 degrés
+        const startAngle = Math.PI * 0.25;
+        const endAngle = Math.PI * 0.75;
         const angleStep = (endAngle - startAngle) / (bulletCount - 1);
         
         for (let i = 0; i < bulletCount; i++) {
             const angle = startAngle + (angleStep * i);
             
-            // Calculer la vélocité
             const speed = 150;
             const velocityX = Math.cos(angle) * speed;
             const velocityY = Math.sin(angle) * speed;
             
-            // Créer la bullet avec un délai
             this.scene.time.delayedCall(i * 100, () => {
                 this.createBullet(startX, startY, velocityX, velocityY);
             });
         }
         
-        // Terminer l'attaque après que toutes les bullets soient tirées
         this.scene.time.delayedCall(bulletCount * 100 + 1000, () => {
             this.endAttack();
         });
@@ -168,28 +195,20 @@ class BlueBeetle {
      * Attaque 2: Rayon laser composite avec effets visuels
      */
     laserBeam() {
-
+        const laserX = this.container.x;
+        const laserY = this.container.y + 200; // Remonté de 80 pixels (280 - 80 = 200)
         
-        // Position du laser (depuis le nez du boss)
-        const laserX = this.sprite.x;
-        const laserY = this.sprite.y + 140; // 56 pixels plus haut
-        
-        // Conteneur pour tous les éléments du laser
         this.laserContainer = this.scene.add.container(laserX, laserY);
-        this.laserContainer.setDepth(5);
+        this.laserContainer.setDepth(15); // Au-dessus du boss (depth 10)
         
-        // Étape 1: Effet de charge (1_charge_effect.png)
         const chargeEffect = this.scene.add.sprite(0, -10, 'charge_effect').setScale(1.5);
         this.laserContainer.add(chargeEffect);
         
         chargeEffect.play('charge_effect_anim');
         
-        // Démarrer charge_build au bout de 100ms
         this.scene.time.delayedCall(100, () => {
-            // Vérifier si le boss est toujours actif et le container existe
             if (!this.active || !this.laserContainer) return;
             
-            // Étape 2: Construction de charge (2_charge_build.png)
             const chargeBuild = this.scene.add.sprite(0, 0, 'charge_build').setScale(2);
             this.laserContainer.add(chargeBuild);
             
@@ -197,122 +216,88 @@ class BlueBeetle {
         });
         
         chargeEffect.once('animationcomplete', () => {
-            // Effacer l'effet de charge une fois terminé
+            if (!this.active || !this.laserContainer) return;
+            
+            // Effacer l'effet de charge
             chargeEffect.destroy();
             
-            // Attendre 1 seconde puis explosion d'allumage
-            this.scene.time.delayedCall(1000, () => {
-                // Vérifier si le boss est toujours actif et le container existe
+            const ignitionBurst = this.scene.add.sprite(0, 0, 'ignition_burst').setScale(2);
+            this.laserContainer.add(ignitionBurst);
+            
+            ignitionBurst.play('ignition_burst_anim');
+            
+            ignitionBurst.once('animationcomplete', () => {
                 if (!this.active || !this.laserContainer) return;
                 
-                // Étape 3: Explosion d'allumage (3_ignition_burst.png)
-                const ignitionBurst = this.scene.add.sprite(0, 0, 'ignition_burst').setScale(1.5);
-                this.laserContainer.add(ignitionBurst);
+                // Effacer l'effet d'ignition
+                ignitionBurst.destroy();
                 
-                ignitionBurst.play('ignition_burst_anim');
-                ignitionBurst.once('animationcomplete', () => {
-                    // Vérifier si le boss est toujours actif et le container existe
-                    if (!this.active || !this.laserContainer) return;
-                    
-                    // Effacer l'explosion d'allumage une fois terminée
-                    ignitionBurst.destroy();
-                    
-                    // Arrêter l'animation de charge build
-                    // Chercher et détruire chargeBuild dans le container
-                    this.laserContainer.each(child => {
-                        if (child.texture && child.texture.key === 'charge_build') {
-                            child.destroy();
-                        }
-                    });
-                    
-                    // Étape 4: Origine du rayon (4_beam_origin.png)
-                    const beamOrigin = this.scene.add.sprite(0, 0, 'beam_origin').setScale(2);
-                    this.laserContainer.add(beamOrigin);
-                    beamOrigin.play('beam_origin_anim');
-                    
-                    // Étape 5: Frames du rayon (5_beam_frames.png)
-                    // Créer plusieurs segments du rayon pour couvrir toute la hauteur
-                    const beamHeight = 128; // Hauteur d'un segment (avant scale)
-                    const scaledBeamHeight = beamHeight * 2; // Hauteur après scale x2
-                    const beamOriginBottom = 48; // Bottom du beam_origin (48/2 avec scale 2)
-                    const totalHeight = this.scene.game.config.height - laserY + 20;
-                    const numSegments = Math.ceil((totalHeight - beamOriginBottom) / scaledBeamHeight);
-                    
-                    this.laserSegments = [];
-                    
-                    for (let i = 0; i < numSegments; i++) {
-                        // Premier segment commence juste en dessous du beam_origin, remonté de 10 pixels au total
-                        const segmentY = beamOriginBottom + (i * scaledBeamHeight) + (scaledBeamHeight / 2) - 10;
-                        const beamSegment = this.scene.add.sprite(0, segmentY, 'beam_frames').setScale(2);
-                        this.laserContainer.add(beamSegment);
-                        beamSegment.play('beam_frames_anim');
-                        this.laserSegments.push(beamSegment);
+                const beamOrigin = this.scene.add.sprite(0, 0, 'beam_origin').setScale(2);
+                this.laserContainer.add(beamOrigin);
+                beamOrigin.play('beam_origin_anim');
+                
+                this.laserSegments = [];
+                const segmentHeight = 128;
+                const gameHeight = this.scene.game.config.height;
+                const segmentCount = Math.ceil((gameHeight - laserY) / segmentHeight) + 1;
+                
+                for (let i = 0; i < segmentCount; i++) {
+                    const segment = this.scene.add.sprite(0, (i + 1) * segmentHeight + 30, 'beam_frames').setScale(2); // +30 pixels vers le bas
+                    this.laserContainer.add(segment);
+                    segment.play('beam_frames_anim');
+                    this.laserSegments.push(segment);
+                }
+                
+                this.currentLaser = {
+                    getBounds: () => {
+                        if (!this.laserContainer || !this.active) return null;
+                        return new Phaser.Geom.Rectangle(
+                            laserX - 32,
+                            laserY + 30, // Ajuster la collision pour correspondre au déplacement visuel
+                            64,
+                            gameHeight - (laserY + 30)
+                        );
                     }
-                    
-                    // Propriétés du laser pour les collisions
-                    this.currentLaser = {
-                        x: laserX,
-                        y: laserY,
-                        width: 32 * 2, // largeur du sprite x scale
-                        height: totalHeight,
-                        damage: 50,
-                        isBossLaser: true,
-                        getBounds: function() {
-                            return new Phaser.Geom.Rectangle(
-                                this.x - this.width / 2,
-                                this.y,
-                                this.width,
-                                this.height
-                            );
-                        }
-                    };
-                    
-
-                    
-                    // Maintenir le laser pendant 3 secondes
-                    this.scene.time.delayedCall(3000, () => {
-                        // Vérifier si le boss est toujours actif
-                        if (!this.active) return;
-                        
-                        // Nettoyer tous les éléments du laser
-                        if (this.laserContainer) {
-                            this.laserContainer.destroy();
-                            this.laserContainer = null;
-                        }
-                        this.laserSegments = [];
-                        this.currentLaser = null;
-                        
-                        this.endAttack();
-                    });
+                };
+                
+                this.scene.time.delayedCall(2000, () => {
+                    this.endAttack();
                 });
             });
         });
     }
     
     /**
-     * Termine une attaque et reprend les déplacements
+     * Termine l'attaque en cours
      */
     endAttack() {
-
         this.attackInProgress = false;
         this.moveCount = 0;
-        this.phase = 'moving';
+        
+        if (this.laserContainer) {
+            this.laserContainer.destroy();
+            this.laserContainer = null;
+        }
+        if (this.laserSegments) {
+            this.laserSegments = [];
+        }
+        if (this.currentLaser) {
+            this.currentLaser = null;
+        }
+        
         this.scheduleNextMove();
     }
     
     /**
-     * Crée une bullet du boss
+     * Crée un projectile du boss
      */
     createBullet(x, y, velocityX, velocityY) {
         const bullet = new BlueBeetleBullet(this.scene, x, y, velocityX, velocityY);
         this.bullets.push(bullet);
         
-        // Ajouter à la liste des projectiles ennemis de l'EnemyManager
         if (this.scene.enemyManager) {
             this.scene.enemyManager.enemyBullets.push(bullet);
         }
-        
-
     }
     
     /**
@@ -321,7 +306,6 @@ class BlueBeetle {
     update(time) {
         if (!this.active) return;
         
-        // Mettre à jour les bullets
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const bullet = this.bullets[i];
             bullet.update(time);
@@ -331,7 +315,6 @@ class BlueBeetle {
             }
         }
         
-        // Vérifier les collisions du laser avec le joueur
         if (this.currentLaser && this.scene.player && !this.scene.playerInvincible) {
             const playerBounds = this.scene.player.sprite.getBounds();
             const laserBounds = this.currentLaser.getBounds();
@@ -344,43 +327,236 @@ class BlueBeetle {
     
     /**
      * Gère les dégâts infligés au boss
+     * Détermine quel composant a été touché et applique les dégâts
      */
-    hit(damage) {
-        this.health -= damage;
+    hit(damage, hitComponent = null) {
+        // Vérifier si toutes les ailes sont détruites
+        const allWingsDestroyed = this.aileArDroiteDestroyed && this.aileArGaucheDestroyed && 
+                                  this.aileAvDroiteDestroyed && this.aileAvGaucheDestroyed;
         
-        // Effet visuel de dégâts
-        this.scene.tweens.add({
-            targets: this.sprite,
-            alpha: 0.5,
-            duration: 100,
-            yoyo: true,
-            onComplete: () => {
-                if (this.sprite && this.active) {
-                    this.sprite.alpha = 1.0;
+        // Si un composant spécifique a été touché
+        if (hitComponent) {
+            if (hitComponent === 'tronc' && allWingsDestroyed && !this.troncDestroyed) {
+                // Dégâts au tronc
+                this.troncHealth -= damage;
+                this.showDamageEffect(this.troncSprite);
+                
+                if (this.troncHealth <= 0) {
+                    this.troncDestroyed = true;
+                    this.troncSprite.setVisible(false);
+                    this.destroy();
+                    return true;
+                }
+            } else if (hitComponent !== 'tronc') {
+                // Vérifier si l'aile touchée n'est pas déjà détruite
+                const isWingDestroyed = this.isWingDestroyed(hitComponent);
+                if (!isWingDestroyed) {
+                    // Dégâts à une aile spécifique
+                    this.damageWing(hitComponent, damage);
                 }
             }
-        });
-        
-
-        
-        // Vérifier si le boss est vaincu
-        if (this.health <= 0) {
-            this.destroy();
-            return true;
+        } else {
+            // Logique de fallback : comportement aléatoire si pas de composant spécifié
+            if (allWingsDestroyed && !this.troncDestroyed) {
+                this.troncHealth -= damage;
+                this.showDamageEffect(this.troncSprite);
+                
+                if (this.troncHealth <= 0) {
+                    this.troncDestroyed = true;
+                    this.troncSprite.setVisible(false);
+                    this.destroy();
+                    return true;
+                }
+            } else {
+                // Endommager une aile aléatoire qui n'est pas encore détruite
+                const availableWings = [];
+                
+                if (!this.aileArDroiteDestroyed) availableWings.push('aileArDroite');
+                if (!this.aileArGaucheDestroyed) availableWings.push('aileArGauche');
+                if (!this.aileAvDroiteDestroyed) availableWings.push('aileAvDroite');
+                if (!this.aileAvGaucheDestroyed) availableWings.push('aileAvGauche');
+                
+                if (availableWings.length > 0) {
+                    const randomWing = availableWings[Math.floor(Math.random() * availableWings.length)];
+                    this.damageWing(randomWing, damage);
+                }
+            }
         }
         
         return false;
     }
     
     /**
+     * Vérifie si une aile est détruite
+     */
+    isWingDestroyed(wingName) {
+        switch (wingName) {
+            case 'aileArDroite':
+                return this.aileArDroiteDestroyed;
+            case 'aileArGauche':
+                return this.aileArGaucheDestroyed;
+            case 'aileAvDroite':
+                return this.aileAvDroiteDestroyed;
+            case 'aileAvGauche':
+                return this.aileAvGaucheDestroyed;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Obtient la zone de collision d'un composant en coordonnées mondiales
+     */
+    getComponentCollisionZone(componentName) {
+        let sprite = null;
+        
+        // Obtenir le sprite correspondant
+        switch (componentName) {
+            case 'aileArDroite':
+                sprite = this.aileArDroiteSprite;
+                break;
+            case 'aileArGauche':
+                sprite = this.aileArGaucheSprite;
+                break;
+            case 'aileAvDroite':
+                sprite = this.aileAvDroiteSprite;
+                break;
+            case 'aileAvGauche':
+                sprite = this.aileAvGaucheSprite;
+                break;
+            case 'tronc':
+                sprite = this.troncSprite;
+                break;
+            default:
+                return null;
+        }
+        
+        if (!sprite || !sprite.visible) return null;
+        
+        // Convertir les coordonnées locales du sprite en coordonnées mondiales
+        const worldPos = this.container.getWorldTransformMatrix().transformPoint(sprite.x, sprite.y);
+        
+        // Calculer les bounds en coordonnées mondiales avec réduction pour plus de précision
+        const fullWidth = sprite.width * sprite.scaleX;
+        const fullHeight = sprite.height * sprite.scaleY;
+        
+        // Facteurs de réduction pour chaque composant (ajustés selon la forme réelle)
+        let widthReduction = 0.8;  // Réduire de 20% par défaut
+        let heightReduction = 0.8;
+        
+        switch (componentName) {
+            case 'aileArDroite':
+            case 'aileArGauche':
+                // Ailes arrière : plus étroites, forme allongée
+                widthReduction = 0.7;
+                heightReduction = 0.8;
+                break;
+            case 'aileAvDroite':
+            case 'aileAvGauche':
+                // Ailes avant : plus larges mais plus courtes
+                widthReduction = 0.8;
+                heightReduction = 0.7;
+                break;
+            case 'tronc':
+                // Tronc : forme plus compacte au centre
+                widthReduction = 0.6;
+                heightReduction = 0.8;
+                break;
+        }
+        
+        const width = fullWidth * widthReduction;
+        const height = fullHeight * heightReduction;
+        
+        return {
+            x: worldPos.x - width / 2,
+            y: worldPos.y - height / 2,
+            width: width,
+            height: height,
+            centerX: worldPos.x,
+            centerY: worldPos.y
+        };
+    }
+
+    /**
+     * Endommage une aile spécifique
+     */
+    damageWing(wingName, damage) {
+        switch (wingName) {
+            case 'aileArDroite':
+                this.aileArDroiteHealth -= damage;
+                this.showDamageEffect(this.aileArDroiteSprite);
+                if (this.aileArDroiteHealth <= 0) {
+                    this.aileArDroiteDestroyed = true;
+                    this.aileArDroiteSprite.setVisible(false);
+                    this.createWingExplosion(this.aileArDroiteSprite);
+                }
+                break;
+            case 'aileArGauche':
+                this.aileArGaucheHealth -= damage;
+                this.showDamageEffect(this.aileArGaucheSprite);
+                if (this.aileArGaucheHealth <= 0) {
+                    this.aileArGaucheDestroyed = true;
+                    this.aileArGaucheSprite.setVisible(false);
+                    this.createWingExplosion(this.aileArGaucheSprite);
+                }
+                break;
+            case 'aileAvDroite':
+                this.aileAvDroiteHealth -= damage;
+                this.showDamageEffect(this.aileAvDroiteSprite);
+                if (this.aileAvDroiteHealth <= 0) {
+                    this.aileAvDroiteDestroyed = true;
+                    this.aileAvDroiteSprite.setVisible(false);
+                    this.createWingExplosion(this.aileAvDroiteSprite);
+                }
+                break;
+            case 'aileAvGauche':
+                this.aileAvGaucheHealth -= damage;
+                this.showDamageEffect(this.aileAvGaucheSprite);
+                if (this.aileAvGaucheHealth <= 0) {
+                    this.aileAvGaucheDestroyed = true;
+                    this.aileAvGaucheSprite.setVisible(false);
+                    this.createWingExplosion(this.aileAvGaucheSprite);
+                }
+                break;
+        }
+    }
+    
+    /**
+     * Affiche un effet visuel de dégâts sur un sprite
+     */
+    showDamageEffect(sprite) {
+        this.scene.tweens.add({
+            targets: sprite,
+            alpha: 0.5,
+            duration: 100,
+            yoyo: true,
+            onComplete: () => {
+                if (sprite && this.active) {
+                    sprite.alpha = 1.0;
+                }
+            }
+        });
+    }
+    
+    /**
+     * Crée une explosion pour une aile détruite
+     */
+    createWingExplosion(wingSprite) {
+        const worldPos = this.container.getWorldTransformMatrix().transformPoint(wingSprite.x, wingSprite.y);
+        const explosion = this.scene.add.sprite(worldPos.x, worldPos.y, 'explosion');
+        explosion.setScale(2);
+        explosion.play('explode');
+        explosion.once('animationcomplete', () => {
+            explosion.destroy();
+        });
+    }
+    
+    /**
      * Détruit le boss
      */
     destroy() {
-
-        
         this.active = false;
         
-        // Nettoyer le laser actuel (nouveau système composite)
         if (this.laserContainer) {
             this.laserContainer.destroy();
             this.laserContainer = null;
@@ -392,7 +568,6 @@ class BlueBeetle {
             this.currentLaser = null;
         }
         
-        // Nettoyer toutes les bullets
         this.bullets.forEach(bullet => {
             if (bullet.active) {
                 bullet.destroy();
@@ -400,18 +575,15 @@ class BlueBeetle {
         });
         this.bullets = [];
         
-        // Effet d'explosion du boss
-        const explosion = this.scene.add.sprite(this.sprite.x, this.sprite.y, 'explosion');
-        explosion.setScale(4); // Grande explosion
+        const explosion = this.scene.add.sprite(this.container.x, this.container.y, 'explosion');
+        explosion.setScale(4);
         explosion.play('explode');
         explosion.once('animationcomplete', () => {
             explosion.destroy();
         });
         
-        // Détruire le sprite
-        this.sprite.destroy();
+        this.container.destroy();
         
-        // Déclencher la victoire avec un petit délai pour permettre au score d'être mis à jour
         this.scene.time.delayedCall(100, () => {
             this.scene.handleBossVictory();
         });
@@ -433,39 +605,29 @@ class BlueBeetleBullet {
         this.scene = scene;
         this.active = true;
         
-        // Créer le sprite de la bullet
         this.sprite = scene.add.sprite(x, y, 'bullet').setScale(2);
         
-        // Propriétés de mouvement
         this.velocityX = velocityX;
         this.velocityY = velocityY;
         
-        // Propriétés de la bullet
         this.damage = 1;
-        this.lifetime = 10000; // 10 secondes
+        this.lifetime = 10000;
         this.creationTime = scene.time.now;
         
-        // Animation de la bullet
         if (scene.anims.exists('bullet_anim')) {
             this.sprite.play('bullet_anim');
         }
         
-        // Référence pour l'accès facile
         this.sprite.parentBullet = this;
     }
     
-    /**
-     * Met à jour la bullet
-     */
     update(time) {
         if (!this.active) return;
         
-        // Mouvement
         const deltaSeconds = 1/60;
         this.sprite.x += this.velocityX * deltaSeconds;
         this.sprite.y += this.velocityY * deltaSeconds;
         
-        // Vérifier si hors écran
         const gameWidth = this.scene.game.config.width;
         const gameHeight = this.scene.game.config.height;
         
@@ -475,15 +637,11 @@ class BlueBeetleBullet {
             return;
         }
         
-        // Vérifier la durée de vie
         if (time - this.creationTime > this.lifetime) {
             this.destroy();
         }
     }
     
-    /**
-     * Détruit la bullet
-     */
     destroy() {
         this.active = false;
         
@@ -492,9 +650,6 @@ class BlueBeetleBullet {
         }
     }
     
-    /**
-     * Retourne les limites pour la collision
-     */
     getBounds() {
         if (!this.sprite || !this.active) return null;
         return this.sprite.getBounds();

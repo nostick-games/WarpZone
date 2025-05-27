@@ -140,7 +140,12 @@ class GameScene extends Phaser.Scene {
         this.load.spritesheet('purpledeath', 'assets/enemies/PurpleDeath.png', { frameWidth: 64, frameHeight: 88 });
         this.load.spritesheet('tourelle', 'assets/enemies/tourelle.png', { frameWidth: 66, frameHeight: 66 });
         this.load.spritesheet('tourelle_left', 'assets/enemies/tourelle_left.png', { frameWidth: 64, frameHeight: 64 });
-        this.load.spritesheet('bluebeetle', 'assets/enemies/boss/BlueBeetle.png', { frameWidth: 169, frameHeight: 178 });
+        // Charger les composants du boss BlueBeetle
+        this.load.spritesheet('bluebeetle_tronc', 'assets/enemies/boss/BlueBeetle_tronc.png', { frameWidth: 169, frameHeight: 178 });
+        this.load.image('bluebeetle_aile_ar_droite', 'assets/enemies/boss/BlueBeetle_aile_ar_droite.png');
+        this.load.image('bluebeetle_aile_ar_gauche', 'assets/enemies/boss/BlueBeetle_aile_ar_gauche.png');
+        this.load.image('bluebeetle_aile_av_droite', 'assets/enemies/boss/BlueBeetle_aile_av_droite.png');
+        this.load.image('bluebeetle_aile_av_gauche', 'assets/enemies/boss/BlueBeetle_aile_av_gauche.png');
         
         // Nouveaux assets pour la tourelle redessinée
         this.load.image('astroport', 'assets/enemies/astroport.png');
@@ -530,11 +535,11 @@ class GameScene extends Phaser.Scene {
             });
         }
         
-        // Animation pour le boss BlueBeetle
-        if (!this.anims.exists('bluebeetle_fly')) {
+        // Animation pour le tronc du boss BlueBeetle
+        if (!this.anims.exists('bluebeetle_tronc_fly')) {
             this.anims.create({
-                key: 'bluebeetle_fly',
-                frames: this.anims.generateFrameNumbers('bluebeetle', { start: 0, end: 1 }),
+                key: 'bluebeetle_tronc_fly',
+                frames: this.anims.generateFrameNumbers('bluebeetle_tronc', { start: 0, end: 1 }),
                 frameRate: 5,
                 repeat: -1
             });
@@ -647,9 +652,10 @@ class GameScene extends Phaser.Scene {
             this.powerupManager.reset();
         }
         
-        // Arrêter les mises à jour des projectiles
-        this.projectiles.forEach(p => p.destroy());
-        this.projectiles = [];
+        // Arrêter les mises à jour des projectiles via le ProjectileManager
+        if (this.projectileManager) {
+            this.projectileManager.destroy();
+        }
 
         // Nettoyer les effets bonus X2
         this.effectsManager.clearBonusX2Effects();

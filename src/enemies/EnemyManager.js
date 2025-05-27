@@ -3,6 +3,7 @@
  * Gère l'apparition, la mise à jour et les collisions des ennemis
  */
 import EnemyBullet from './EnemyBullet.js';
+import EnemySpawner from './EnemySpawner.js';
 
 class EnemyManager {
     constructor(scene, startTime, forceDifficultyLevel = null) {
@@ -40,12 +41,11 @@ class EnemyManager {
         this.debugCollision = false; // Mettre à true pour activer le débogage visuel
         
         // Compteurs pour diagnostic
-        this.spawnCount = 0;
         this.updateCallCount = 0;
         this.lastLogTime = 0;
-        this.creationSuccessCount = 0; // Nombre de créations réussies
         
-
+        // Initialiser le gestionnaire d'apparition
+        this.spawner = new EnemySpawner(this);
         
         // Chargement des classes d'ennemis
         // Ces classes seront chargées séparément dans le HTML
@@ -113,16 +113,16 @@ class EnemyManager {
         if (time > this.nextEnemyTime) {
             // Au niveau 6, ne plus faire apparaître d'ennemis normaux (seul le boss)
             if (this.difficultyLevel < 6) {
-                this.spawnEnemy(time);
+                this.spawner.spawnEnemy(time);
                 
                 // Ajuster le délai en fonction de la difficulté
-                const delay = this.getSpawnDelay();
+                const delay = this.spawner.getSpawnDelay();
                 this.nextEnemyTime = time + delay;
                 
                 // Forcer l'apparition d'un autre ennemi peu après si le niveau de difficulté est élevé
                 if (this.difficultyLevel >= 2 && Math.random() < 0.3) {
                     this.scene.time.delayedCall(700, () => {
-                        this.spawnEnemy(time + 700);
+                        this.spawner.spawnEnemy(time + 700);
                     });
                 }
             } else {
@@ -143,7 +143,7 @@ class EnemyManager {
         
         // Ne pas faire apparaître PurpleDeath si le boss est spawné
         if (this.difficultyLevel >= 2 && purpleDeathTimeCheck && purpleDeathClassExists && !this.bossSpawned) {
-            this.spawnPurpleDeath(time);
+            this.spawner.spawnPurpleDeath(time);
             this.lastPurpleDeathSpawn = time;
         }
         
@@ -153,270 +153,16 @@ class EnemyManager {
         
         // Ne pas faire apparaître de Tourelle si le boss est spawné
         if (this.difficultyLevel >= 3 && tourelleTimeCheck && tourelleClassExists && !this.bossSpawned) {
-            this.spawnTourelle(time);
+            this.spawner.spawnTourelle(time);
             this.lastTourelleSpawn = time;
         }
         
         // Vérifier s'il faut faire apparaître le boss BlueBeetle (niveau 6 uniquement)
         if (this.difficultyLevel >= 6 && !this.bossSpawned && this.scene.BlueBeetle) {
-            this.spawnBoss(time);
+            this.spawner.spawnBoss(time);
         }
     }
-    
-    spawnEnemy(time) {
-        this.spawnCount++;
-        
-        // Position d'apparition (en haut de l'écran)
-        const x = Phaser.Math.Between(50, this.scene.game.config.width - 50);
-        const y = -30;
-        
-        // Vérifier la disponibilité des classes d'ennemis
-        if (!this.scene.Unit1 || !this.scene.Saucer) {
-            return;
-        }
-        
-        // Vérifier si l'ennemi d'élite est disponible à partir du niveau 3
-        const eliteUnitAvailable = this.difficultyLevel >= 3 && this.scene.EliteUnit;
-        
-        // Sélectionner le type d'ennemi en fonction de la difficulté
-        let enemy;
-        let enemyType = "";
-        
-        try {
-            if (this.difficultyLevel < 3) {
-                // Niveaux 1-2: Unit1 plus probable, Saucer moins probable
-                const rand = Phaser.Math.Between(1, 10);
-                if (rand <= 7) { // Modifié de 8 à 7 pour augmenter la probabilité de Saucer
-                    enemy = new this.scene.Unit1(this.scene, x, y);
-                    enemyType = "Unit1";
-                } else {
-                    enemy = new this.scene.Saucer(this.scene, x, y);
-                    enemyType = "Saucer";
-                }
-            } else {
-                // Niveaux 3+: Mélange équilibré avec EliteUnit
-                const rand = Phaser.Math.Between(1, 15); // Augmenté à 15 pour inclure EliteUnit
-                
-                if (rand <= 5) {
-                    enemy = new this.scene.Unit1(this.scene, x, y);
-                    enemyType = "Unit1";
-                } else if (rand <= 10) {
-                    enemy = new this.scene.Saucer(this.scene, x, y);
-                    enemyType = "Saucer";
-                } else if (eliteUnitAvailable) {
-                    // 5/15 = 33% chance pour EliteUnit aux niveaux 3+
-                    enemy = new this.scene.EliteUnit(this.scene, x, y);
-                    enemyType = "EliteUnit";
-                } else {
-                    // Si EliteUnit n'est pas disponible, fallback sur Saucer
-                    enemy = new this.scene.Saucer(this.scene, x, y);
-                    enemyType = "Saucer";
-                }
-            }
-            
-            // Ajuster les propriétés en fonction de la difficulté
-            if (this.difficultyLevel > 1) {
-                enemy.speed *= (1 + (this.difficultyLevel - 1) * 0.1);
-                
-                // Augmenter la santé à partir du niveau 4
-                if (this.difficultyLevel >= 4) {
-                    enemy.health += (this.difficultyLevel - 3) * 5;
-                }
-            }
-            
-            // Ajouter l'ennemi à la liste
-            this.enemies.push(enemy);
-            this.creationSuccessCount++;
-            
-            // Pattern particulier pour certains niveaux de difficulté
-            if (this.difficultyLevel >= 2) { // Modifié de 3 à 2 pour avoir des groupes plus tôt
-                const chanceForGroup = this.difficultyLevel >= 3 ? 30 : 15; // 15% au niveau 2, 30% aux niveaux 3+
-                const roll = Phaser.Math.Between(1, 100);
-                const willSpawnGroup = roll <= chanceForGroup;
-                
-                if (willSpawnGroup) {
-                    // Chance de faire apparaître un groupe d'ennemis du même type
-                    const groupSize = Math.min(3, 1 + Math.floor(this.difficultyLevel / 2));
-                    this.spawnEnemyGroup(enemy.constructor, groupSize, time);
-                }
-            }
-        } catch (error) {
-            // Erreur silencieuse
-        }
-    }
-    
-    spawnEnemyGroup(EnemyClass, count, time) {
-        // Délai entre chaque ennemi du groupe
-        const groupDelay = 300;
-        
-        // Planifier l'apparition des ennemis supplémentaires
-        for (let i = 1; i < count; i++) {
-            this.scene.time.delayedCall(groupDelay * i, () => {
-                // Position d'apparition (en haut de l'écran)
-                const x = Phaser.Math.Between(50, this.scene.game.config.width - 50);
-                const y = -30;
-                
-                try {
-                    // Créer l'ennemi
-                    const enemy = new EnemyClass(this.scene, x, y);
-                    
-                    // Ajuster les propriétés en fonction de la difficulté
-                    if (this.difficultyLevel > 1) {
-                        enemy.speed *= (1 + (this.difficultyLevel - 1) * 0.1);
-                        
-                        if (this.difficultyLevel >= 4) {
-                            enemy.health += (this.difficultyLevel - 3) * 5;
-                        }
-                    }
-                    
-                    // Ajouter l'ennemi à la liste
-                    this.enemies.push(enemy);
-                } catch (error) {
-                    // Erreur silencieuse
-                }
-            });
-        }
-    }
-    
-    spawnPurpleDeath(time) {
-        try {
-            // Choisir aléatoirement le côté d'apparition
-            const fromLeft = Math.random() < 0.5;
-            
-            let x, y, direction;
-            
-            if (fromLeft) {
-                // Apparition à gauche
-                x = -50; // Hors écran à gauche
-                y = Phaser.Math.Between(50, this.scene.game.config.height / 3); // Tiers supérieur
-                direction = 'left';
-            } else {
-                // Apparition à droite
-                x = this.scene.game.config.width + 50; // Hors écran à droite
-                y = Phaser.Math.Between(50, this.scene.game.config.height / 3); // Tiers supérieur
-                direction = 'right';
-            }
-            
-            // Créer PurpleDeath
-            const purpleDeath = new this.scene.PurpleDeath(this.scene, x, y, direction);
-            
-            // Ajuster les propriétés en fonction de la difficulté
-            if (this.difficultyLevel > 3) {
-                purpleDeath.baseSpeed *= (1 + (this.difficultyLevel - 3) * 0.15); // Augmente plus rapidement
-                purpleDeath.calculateMovement(); // Recalculer les vitesses
-                
-                if (this.difficultyLevel >= 6) {
-                    purpleDeath.health += (this.difficultyLevel - 5) * 3; // Plus résistant aux niveaux élevés
-                }
-            }
-            
-            // Ajouter à la liste des ennemis
-            this.enemies.push(purpleDeath);
-            
-        } catch (error) {
-            // Erreur silencieuse
-        }
-    }
-    
-    spawnTourelle(time) {
-        try {
-            // 50% de chance pour chaque type de tourelle
-            const useNewTourelleLeft = Math.random() < 0.5;
-            
-            let x, y, tourelle, tourelleType;
-            
-            if (useNewTourelleLeft) {
-                // Nouvelle TourelleLeft (astroport + tourelle_new) - apparaît depuis la gauche
-                // L'astroport fait 206px de large, décalé de 72px vers la gauche
-                x = 103 - 72; // 206/2 = 103, centré sur le bord gauche - 72px
-                y = -50; // Hors écran en haut
-                tourelleType = "TourelleLeft (nouvelle)";
-                
-                if (!this.scene.TourelleLeft) {
-                    return;
-                }
-                
-                // Créer la nouvelle TourelleLeft
-                tourelle = new this.scene.TourelleLeft(this.scene, x, y);
-                
-            } else {
-                // Nouvelle tourelle (astroport + tourelle_new) - apparaît depuis la droite
-                // L'astroport fait 206px de large, décalé de 72px vers la droite
-                x = this.scene.game.config.width - 103 + 62; // 206/2 = 103, centré sur le bord droit + 72px
-                y = -50; // Hors écran en haut
-                tourelleType = "Tourelle (nouvelle)";
-                
-                if (!this.scene.Tourelle) {
-                    return;
-                }
-                
-                // Créer la nouvelle Tourelle
-                tourelle = new this.scene.Tourelle(this.scene, x, y);
-            }
-            
-            // Ajuster les propriétés en fonction de la difficulté
-            if (this.difficultyLevel > 2) {
-                // Légèrement plus rapide aux niveaux élevés
-                tourelle.speed *= (1 + (this.difficultyLevel - 2) * 0.1);
-                
-                // Plus résistante aux niveaux élevés
-                if (this.difficultyLevel >= 5) {
-                    tourelle.health += (this.difficultyLevel - 4) * 20; // +20 santé par niveau au-dessus de 4
-                }
-            }
-            
-            // Ajouter à la liste des ennemis
-            this.enemies.push(tourelle);
-            
-        } catch (error) {
-            // Erreur silencieuse
-        }
-    }
-    
-    spawnBoss(time) {
-        try {
-            // Position d'entrée du boss (centre en haut, hors écran)
-            const x = this.scene.game.config.width / 2;
-            const y = -100; // Hors écran en haut
-            
-            // Créer le boss
-            this.boss = new this.scene.BlueBeetle(this.scene, x, y);
-            
-            // Marquer le boss comme spawné
-            this.bossSpawned = true;
-            
-            // Ajouter à la liste des ennemis
-            this.enemies.push(this.boss);
-            
-            // Afficher un message d'alerte pour le boss
-            const bossText = this.scene.add.text(
-                this.scene.game.config.width / 2,
-                this.scene.game.config.height / 2 - 100,
-                'BOSS FIGHT!',
-                {
-                    fontFamily: 'Electrolize',
-                    fontSize: '32px',
-                    color: '#FF0000',
-                    fontStyle: 'bold'
-                }
-            ).setOrigin(0.5);
-            
-            // Faire disparaître le texte après un moment
-            this.scene.tweens.add({
-                targets: bossText,
-                alpha: 0,
-                y: bossText.y - 50,
-                duration: 3000,
-                ease: 'Power2',
-                onComplete: () => {
-                    bossText.destroy();
-                }
-            });
-            
-        } catch (error) {
-            // Erreur silencieuse
-        }
-    }
+
     
     increaseDifficulty() {
         // Incrémenter le niveau de difficulté
@@ -434,17 +180,7 @@ class EnemyManager {
         
         // Le niveau de difficulté est augmenté silencieusement
     }
-    
-    getSpawnDelay() {
-        // Calculer un délai aléatoire à l'intérieur d'une plage basée sur le délai de base
-        const minDelay = Math.max(this.minSpawnDelay, this.enemySpawnDelay * 0.8);
-        const maxDelay = this.enemySpawnDelay * 1.2;
-        
-        const randomFactor = Phaser.Math.FloatBetween(0.8, 1.2);
-        const delay = Math.floor(this.enemySpawnDelay * randomFactor);
-        
-        return delay;
-    }
+
     
     checkPlayerCollisions(player) {
         if (!this.scene.collisionManager) return false;
@@ -457,20 +193,66 @@ class EnemyManager {
             const enemy = this.enemies[i];
             if (!enemy || !enemy.sprite || !enemy.active) continue;
 
-            // Pour la nouvelle tourelle, vérifier seulement la collision avec la tourelle, pas l'astroport
-            let targetSprite = enemy.sprite;
-            if (enemy.constructor.name === 'Tourelle' && enemy.astroport) {
-                // C'est la nouvelle tourelle, utiliser seulement le sprite de la tourelle pour les collisions
-                targetSprite = enemy.sprite; // enemy.sprite est déjà la tourelle
-            }
-
-            const intersection = this.scene.collisionManager.getCollisionIntersection(playerSprite, targetSprite, true, 2, 30);
-
-            if (intersection) {
-                if (this.debugCollision) {
-                    this.scene.collisionManager.debugDrawCollision(playerSprite, targetSprite, intersection, true);
+            // Gestion spéciale pour BlueBeetle composite
+            if (enemy.constructor.name === 'BlueBeetle' || enemy instanceof this.scene.BlueBeetle) {
+                // Pour BlueBeetle, vérifier les collisions avec chaque composant visible
+                const components = [
+                    { sprite: enemy.aileArDroiteSprite, destroyed: enemy.aileArDroiteDestroyed },
+                    { sprite: enemy.aileArGaucheSprite, destroyed: enemy.aileArGaucheDestroyed },
+                    { sprite: enemy.aileAvDroiteSprite, destroyed: enemy.aileAvDroiteDestroyed },
+                    { sprite: enemy.aileAvGaucheSprite, destroyed: enemy.aileAvGaucheDestroyed }
+                ];
+                
+                // Ajouter le tronc seulement si toutes les ailes sont détruites
+                const allWingsDestroyed = enemy.aileArDroiteDestroyed && enemy.aileArGaucheDestroyed && 
+                                          enemy.aileAvDroiteDestroyed && enemy.aileAvGaucheDestroyed;
+                if (allWingsDestroyed) {
+                    components.push({ sprite: enemy.troncSprite, destroyed: enemy.troncDestroyed });
                 }
-                return true; // Collision détectée
+                
+                for (const component of components) {
+                    if (!component.destroyed && component.sprite.visible) {
+                        // Convertir les coordonnées du sprite du composant en coordonnées mondiales
+                        const worldPos = enemy.container.getWorldTransformMatrix().transformPoint(component.sprite.x, component.sprite.y);
+                        
+                        // Créer un sprite temporaire pour la collision
+                        const tempSprite = {
+                            x: worldPos.x,
+                            y: worldPos.y,
+                            width: component.sprite.width * component.sprite.scaleX,
+                            height: component.sprite.height * component.sprite.scaleY,
+                            getBounds: () => new Phaser.Geom.Rectangle(
+                                worldPos.x - (component.sprite.width * component.sprite.scaleX) / 2,
+                                worldPos.y - (component.sprite.height * component.sprite.scaleY) / 2,
+                                component.sprite.width * component.sprite.scaleX,
+                                component.sprite.height * component.sprite.scaleY
+                            )
+                        };
+                        
+                        // Vérification de collision simple et efficace
+                        const playerBounds = playerSprite.getBounds();
+                        const componentBounds = tempSprite.getBounds();
+                        
+                        if (Phaser.Geom.Rectangle.Overlaps(playerBounds, componentBounds)) {
+                            return true; // Collision détectée
+                        }
+                    }
+                }
+            } else {
+                // Gestion normale pour les autres ennemis
+                let targetSprite = enemy.sprite;
+                if (enemy.constructor.name === 'Tourelle' && enemy.astroport) {
+                    targetSprite = enemy.sprite;
+                }
+
+                const intersection = this.scene.collisionManager.getCollisionIntersection(playerSprite, targetSprite, true, 2, 30);
+
+                if (intersection) {
+                    if (this.debugCollision) {
+                        this.scene.collisionManager.debugDrawCollision(playerSprite, targetSprite, intersection, true);
+                    }
+                    return true; // Collision détectée
+                }
             }
         }
         
@@ -509,73 +291,178 @@ class EnemyManager {
                 const enemy = this.enemies[j];
                 if (!enemy || !enemy.sprite || !enemy.active) continue;
 
-                // Pour la nouvelle tourelle, vérifier seulement la collision avec la tourelle, pas l'astroport
-                let targetSprite = enemy.sprite;
-                if (enemy.constructor.name === 'Tourelle' && enemy.astroport) {
-                    // C'est la nouvelle tourelle, utiliser seulement le sprite de la tourelle pour les collisions
-                    targetSprite = enemy.sprite; // enemy.sprite est déjà la tourelle
-                }
-
-                // Utiliser enablePixelPerfect=true, sauf si le projectile l'ignore explicitement
-                const enablePixelPerfect = !projectile.ignorePixelPerfect;
-                const intersection = this.scene.collisionManager.getCollisionIntersection(projectile, targetSprite, enablePixelPerfect, 2, 30);
-
-                if (intersection) {
-                    if (this.debugCollision) {
-                        this.scene.collisionManager.debugDrawCollision(projectile, targetSprite, intersection, enablePixelPerfect);
-                    }
-
-                    // Pour les projectiles perçants, vérifier si cet ennemi a déjà été touché
-                    if (projectile.piercing && projectile.hitEnemies) {
-                        // Si cet ennemi a déjà été touché par ce projectile, ignorer la collision
-                        if (projectile.hitEnemies.has(enemy)) {
-                            continue; // Passer à l'ennemi suivant
-                        }
-                        // Marquer cet ennemi comme touché par ce projectile
-                        projectile.hitEnemies.add(enemy);
-                    }
-
-                    const destroyed = enemy.hit(projectile.power);
+                                // Gestion spéciale pour BlueBeetle composite
+                if (enemy.constructor.name === 'BlueBeetle' || enemy instanceof this.scene.BlueBeetle) {
+                    // Pour BlueBeetle, vérifier les collisions avec chaque composant visible
+                    let collisionDetected = false;
+                    const enablePixelPerfect = !projectile.ignorePixelPerfect;
+                    // Vérifier si toutes les ailes sont détruites
+                    const allWingsDestroyed = enemy.aileArDroiteDestroyed && enemy.aileArGaucheDestroyed && 
+                                              enemy.aileAvDroiteDestroyed && enemy.aileAvGaucheDestroyed;
                     
-                    // Donner des points pour avoir touché BlueBeetle (même sans le détruire)
-                    if (enemy instanceof this.scene.BlueBeetle) {
-                        score += 50; // 50 points pour chaque hit sur BlueBeetle
+                    // Vérifier collision avec zones personnalisées pour chaque composant
+                    const componentNames = ['aileAvGauche', 'aileAvDroite', 'aileArGauche', 'aileArDroite'];
+                    
+                    // Ajouter le tronc si toutes les ailes sont détruites
+                    if (allWingsDestroyed) {
+                        componentNames.push('tronc');
                     }
                     
-                    if (destroyed) {
-                        if (enemy instanceof this.scene.Unit1) {
-                            score += 100;
-                        } else if (enemy instanceof this.scene.Saucer) {
-                            score += 200;
-                        } else if (enemy instanceof this.scene.EliteUnit) {
-                            score += 300; // Plus de points pour l'ennemi d'élite
-                        } else if (enemy instanceof this.scene.PurpleDeath) {
-                            score += 400; // Beaucoup de points pour PurpleDeath
-                        } else if (enemy instanceof this.scene.Tourelle) {
-                            score += 1000; // 1000 points pour la Tourelle
-                        } else if (enemy instanceof this.scene.TourelleLeft) {
-                            score += 1000; // 1000 points pour la TourelleLeft
-                        } else if (enemy instanceof this.scene.BlueBeetle) {
-                            score += 10000; // 10000 points pour le boss BlueBeetle (en plus des 50 du hit)
+                    for (const componentName of componentNames) {
+                        // Vérifier si le composant est détruit
+                        const isDestroyed = (componentName === 'tronc') ? enemy.troncDestroyed : enemy.isWingDestroyed(componentName);
+                        if (isDestroyed) continue;
+                        
+                        // Obtenir la zone de collision du composant
+                        const collisionZone = enemy.getComponentCollisionZone(componentName);
+                        if (!collisionZone) continue;
+                        
+                        // Vérifier collision entre projectile et zone de collision avec multi-points
+                        const projectileBounds = projectile.getBounds();
+                        const zoneBounds = new Phaser.Geom.Rectangle(
+                            collisionZone.x,
+                            collisionZone.y,
+                            collisionZone.width,
+                            collisionZone.height
+                        );
+                        
+                        // Tester plusieurs points du projectile pour plus de précision
+                        const testPoints = [
+                            { x: projectileBounds.centerX, y: projectileBounds.centerY }, // Centre
+                            { x: projectileBounds.x + projectileBounds.width * 0.25, y: projectileBounds.centerY }, // Gauche
+                            { x: projectileBounds.x + projectileBounds.width * 0.75, y: projectileBounds.centerY }, // Droite
+                            { x: projectileBounds.centerX, y: projectileBounds.y + projectileBounds.height * 0.25 }, // Haut
+                            { x: projectileBounds.centerX, y: projectileBounds.y + projectileBounds.height * 0.75 }  // Bas
+                        ];
+                        
+                        let collisionFound = false;
+                        for (const point of testPoints) {
+                            if (zoneBounds.contains(point.x, point.y)) {
+                                collisionFound = true;
+                                break;
+                            }
                         }
                         
-                        // Incrémenter le compteur d'ennemis détruits
-                        if (this.scene.enemyCounter) {
-                            this.scene.enemyCounter.addEnemyKill();
+                        if (collisionFound) {
+                            // Stocker l'information du composant touché
+                            projectile.hitComponent = componentName;
+                            collisionDetected = true;
+                            
+                            if (this.debugCollision) {
+                                // Dessiner la zone de collision pour le débogage
+                                const debugGfx = this.scene.add.graphics();
+                                
+                                // Zone de collision du composant (vert)
+                                debugGfx.lineStyle(2, 0x00FF00, 1);
+                                debugGfx.strokeRect(collisionZone.x, collisionZone.y, collisionZone.width, collisionZone.height);
+                                
+                                // Projectile (rouge)
+                                debugGfx.lineStyle(2, 0xFF0000, 1);
+                                debugGfx.strokeRect(projectileBounds.x, projectileBounds.y, projectileBounds.width, projectileBounds.height);
+                                
+                                // Points de test (jaune)
+                                debugGfx.lineStyle(1, 0xFFFF00, 1);
+                                for (const point of testPoints) {
+                                    debugGfx.strokeCircle(point.x, point.y, 2);
+                                }
+                                
+                                this.scene.time.delayedCall(1000, () => {
+                                    debugGfx.destroy();
+                                });
+                            }
+                            break;
                         }
                     }
+                    
+                    if (collisionDetected) {
+                        // Pour les projectiles perçants, vérifier si cet ennemi a déjà été touché
+                        if (projectile.piercing && projectile.hitEnemies) {
+                            if (projectile.hitEnemies.has(enemy)) {
+                                continue;
+                            }
+                            projectile.hitEnemies.add(enemy);
+                        }
 
-                    if (projectile.areaEffect && destroyed) {
-                        this.handleAreaEffect(projectile, enemy);
+                        const destroyed = enemy.hit(projectile.power, projectile.hitComponent);
+                        score += 50; // 50 points pour chaque hit sur BlueBeetle
+                        
+                        if (destroyed) {
+                            score += 10000; // 10000 points pour le boss BlueBeetle (en plus des 50 du hit)
+                            
+                            if (this.scene.enemyCounter) {
+                                this.scene.enemyCounter.addEnemyKill();
+                            }
+                        }
+
+                        if (projectile.areaEffect && destroyed) {
+                            this.handleAreaEffect(projectile, enemy);
+                        }
+
+                        if (!projectile.piercing) {
+                            if (projectile.particles) {
+                                projectile.particles.destroy();
+                            }
+                            projectile.destroy();
+                            projectiles.splice(i, 1);
+                            break; 
+                        }
+                    }
+                } else {
+                    // Gestion normale pour les autres ennemis
+                    let targetSprite = enemy.sprite;
+                    if (enemy.constructor.name === 'Tourelle' && enemy.astroport) {
+                        targetSprite = enemy.sprite;
                     }
 
-                    if (!projectile.piercing) {
-                        if (projectile.particles) {
-                            projectile.particles.destroy();
+                    const enablePixelPerfect = !projectile.ignorePixelPerfect;
+                    const intersection = this.scene.collisionManager.getCollisionIntersection(projectile, targetSprite, enablePixelPerfect, 2, 30);
+
+                    if (intersection) {
+                        if (this.debugCollision) {
+                            this.scene.collisionManager.debugDrawCollision(projectile, targetSprite, intersection, enablePixelPerfect);
                         }
-                        projectile.destroy();
-                        projectiles.splice(i, 1);
-                        break; 
+
+                        if (projectile.piercing && projectile.hitEnemies) {
+                            if (projectile.hitEnemies.has(enemy)) {
+                                continue;
+                            }
+                            projectile.hitEnemies.add(enemy);
+                        }
+
+                        const destroyed = enemy.hit(projectile.power);
+                        
+                        if (destroyed) {
+                            if (enemy instanceof this.scene.Unit1) {
+                                score += 100;
+                            } else if (enemy instanceof this.scene.Saucer) {
+                                score += 200;
+                            } else if (enemy instanceof this.scene.EliteUnit) {
+                                score += 300;
+                            } else if (enemy instanceof this.scene.PurpleDeath) {
+                                score += 400;
+                            } else if (enemy instanceof this.scene.Tourelle) {
+                                score += 1000;
+                            } else if (enemy instanceof this.scene.TourelleLeft) {
+                                score += 1000;
+                            }
+                            
+                            if (this.scene.enemyCounter) {
+                                this.scene.enemyCounter.addEnemyKill();
+                            }
+                        }
+
+                        if (projectile.areaEffect && destroyed) {
+                            this.handleAreaEffect(projectile, enemy);
+                        }
+
+                        if (!projectile.piercing) {
+                            if (projectile.particles) {
+                                projectile.particles.destroy();
+                            }
+                            projectile.destroy();
+                            projectiles.splice(i, 1);
+                            break; 
+                        }
                     }
                 }
             }
@@ -909,6 +796,71 @@ class EnemyManager {
         return count;
     }
     
+    /**
+     * Vérifie la collision pixel-perfect entre un projectile et un sprite
+     * @param {Object} projectile - Le projectile
+     * @param {Phaser.GameObjects.Sprite} sprite - Le sprite à tester
+     * @param {Object} worldPos - Position mondiale du sprite
+     * @returns {boolean} - True si collision détectée
+     */
+    checkPixelPerfectCollision(projectile, sprite, worldPos) {
+        // Obtenir les bounds du projectile
+        const projectileBounds = projectile.getBounds();
+        
+        // Calculer les bounds du sprite avec sa position mondiale et son échelle
+        const spriteWidth = sprite.width * sprite.scaleX;
+        const spriteHeight = sprite.height * sprite.scaleY;
+        const spriteBounds = new Phaser.Geom.Rectangle(
+            worldPos.x - spriteWidth / 2,
+            worldPos.y - spriteHeight / 2,
+            spriteWidth,
+            spriteHeight
+        );
+        
+        // Vérification rapide des bounds d'abord
+        if (!Phaser.Geom.Rectangle.Overlaps(projectileBounds, spriteBounds)) {
+            return false;
+        }
+        
+        // Pour l'instant, utiliser une collision rectangulaire améliorée
+        // car l'accès aux pixels des textures est complexe dans Phaser 3
+        try {
+            // Calculer la zone d'intersection
+            const intersection = Phaser.Geom.Rectangle.Intersection(projectileBounds, spriteBounds);
+            
+            // Si l'intersection est suffisamment grande, considérer comme collision
+            const minIntersectionArea = 16; // pixels carrés minimum
+            const intersectionArea = intersection.width * intersection.height;
+            
+            if (intersectionArea >= minIntersectionArea) {
+                return true;
+            }
+            
+            // Pour les petites intersections, vérifier si le centre du projectile
+            // est dans une zone "solide" du sprite (approximation)
+            const projectileCenterX = projectileBounds.centerX;
+            const projectileCenterY = projectileBounds.centerY;
+            
+            // Définir une zone "solide" au centre du sprite (80% de sa taille)
+            const solidZoneRatio = 0.8;
+            const solidWidth = spriteWidth * solidZoneRatio;
+            const solidHeight = spriteHeight * solidZoneRatio;
+            const solidBounds = new Phaser.Geom.Rectangle(
+                worldPos.x - solidWidth / 2,
+                worldPos.y - solidHeight / 2,
+                solidWidth,
+                solidHeight
+            );
+            
+            return solidBounds.contains(projectileCenterX, projectileCenterY);
+            
+        } catch (error) {
+            // En cas d'erreur, fallback vers collision rectangulaire simple
+            console.warn('[BlueBeetle] Erreur collision améliorée, fallback simple:', error);
+            return true; // Considérer comme collision pour éviter les bugs
+        }
+    }
+
     /**
      * Crée un projectile ennemi (bullet) à la position et avec la vélocité spécifiées
      * @param {number} x - Position X du projectile
