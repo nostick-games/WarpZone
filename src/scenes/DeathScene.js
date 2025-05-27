@@ -1,4 +1,5 @@
 import gameManager from '../Game.js';
+import { AudioManager } from '../audio/index.js';
 
 class DeathScene extends Phaser.Scene {
     constructor() {
@@ -49,6 +50,9 @@ class DeathScene extends Phaser.Scene {
     }
 
     create() {
+        // Initialiser l'AudioManager
+        this.audioManager = new AudioManager(this);
+        
         // Nettoyer immédiatement les effets CSS du bonus x2 qui pourraient persister
         this.clearBonusX2CSSEffects();
         
@@ -371,9 +375,18 @@ class DeathScene extends Phaser.Scene {
     }
 
     returnToTitle() {
+        // Arrêter la musique "defeat" avant de passer à l'écran de sélection
+        if (this.audioManager) {
+            console.log(`[DeathScene] Arrêt de la musique avant de revenir à l'écran de sélection`);
+            this.audioManager.stopCurrentMusic(true);
+        }
+        
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start('TitleScene');
+            // Aller à ShipSelectionScene (et non TitleScene)
+            this.scene.start('ShipSelectionScene', { 
+                lastSelectedShipKey: this.selectedShipKey 
+            });
         });
     }
 

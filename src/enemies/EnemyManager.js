@@ -61,6 +61,12 @@ class EnemyManager {
         // Incrémenter le compteur d'appels update
         this.updateCallCount++;
         
+        // Log une seule fois si le boss est spawné
+        if (this.bossSpawned && !this._loggedBoss) {
+            console.log(`[EnemyManager] Boss actif: ${!!this.boss}`);
+            this._loggedBoss = true;
+        }
+        
 
         
         // Effacer les graphiques de débogage (géré par CollisionManager)

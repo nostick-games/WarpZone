@@ -1,7 +1,10 @@
+import { AudioManager } from '../audio/index.js';
+
 class ShipSelectionScene extends Phaser.Scene {
     constructor() {
         super({ key: 'ShipSelectionScene' });
         this.selectedShipIndex = 1; // Par défaut Stardasher (index 1)
+        this.audioManager = null;
         this.inactivityTimer = null; // Timer pour l'inactivité
         this.ships = [
             { 
@@ -63,6 +66,12 @@ class ShipSelectionScene extends Phaser.Scene {
         // Chargement de l'image de fond
         this.load.image('splashscreen', 'assets/items/splashscreen.png');
         
+        // Initialiser le gestionnaire audio
+        this.audioManager = new AudioManager(this);
+        
+        // Précharger les ressources audio
+        this.audioManager.preloadAudio(this);
+        
         // Chargement des spritesheets des vaisseaux (uniquement idle)
         this.load.spritesheet('spaceship1_idle', 'assets/spaceship/spaceship1_idle.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('spaceship2_idle', 'assets/spaceship/spaceship2_idle.png', { frameWidth: 32, frameHeight: 32 });
@@ -80,6 +89,8 @@ class ShipSelectionScene extends Phaser.Scene {
     create() {
         // Fond d'écran - splashscreen
         this.add.image(this.game.config.width / 2, this.game.config.height / 2, 'splashscreen').setOrigin(0.5);
+        
+        // Continuer à jouer la musique de fond (pas besoin de la redémarrer car elle est déjà lancée par TitleScene)
         
         // Initialiser le tableau des fiches d'informations des vaisseaux
         this.shipInfoTexts = [];

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification des fichiers audio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .audio-test {
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .audio-test h2 {
+            margin-top: 0;
+        }
+        .status {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vérification des fichiers audio du jeu WarpZone</h1>
+    
+    <p>Cette page teste l'accessibilité des fichiers audio requis pour le jeu. Vérifiez que tous les fichiers sont correctement chargés.</p>
+    
+    <div class="audio-test">
+        <h2>background.mp3</h2>
+        <p>Utilisé dans : TitleScene, ShipSelectionScene</p>
+        <audio id="background" controls></audio>
+        <button onclick="testAudio('background')">Vérifier</button>
+        <button onclick="playAudio('background')">Jouer</button>
+        <div id="background-status" class="status"></div>
+    </div>
+    
+    <div class="audio-test">
+        <h2>overdrive.mp3</h2>
+        <p>Utilisé dans : GameScene (musique principale)</p>
+        <audio id="overdrive" controls></audio>
+        <button onclick="testAudio('overdrive')">Vérifier</button>
+        <button onclick="playAudio('overdrive')">Jouer</button>
+        <div id="overdrive-status" class="status"></div>
+    </div>
+    
+    <div class="audio-test">
+        <h2>boss.mp3</h2>
+        <p>Utilisé dans : Combat contre BlueBeetle</p>
+        <audio id="boss" controls></audio>
+        <button onclick="testAudio('boss')">Vérifier</button>
+        <button onclick="playAudio('boss')">Jouer</button>
+        <div id="boss-status" class="status"></div>
+    </div>
+    
+    <div class="audio-test">
+        <h2>victory.mp3</h2>
+        <p>Utilisé dans : Écran de victoire</p>
+        <audio id="victory" controls></audio>
+        <button onclick="testAudio('victory')">Vérifier</button>
+        <button onclick="playAudio('victory')">Jouer</button>
+        <div id="victory-status" class="status"></div>
+    </div>
+    
+    <div class="audio-test">
+        <h2>defeat.mp3</h2>
+        <p>Utilisé dans : Game Over</p>
+        <audio id="defeat" controls></audio>
+        <button onclick="testAudio('defeat')">Vérifier</button>
+        <button onclick="playAudio('defeat')">Jouer</button>
+        <div id="defeat-status" class="status"></div>
+    </div>
+
+    <script>
+        // Fonction pour tester l'accessibilité d'un fichier audio
+        function testAudio(id) {
+            const audio = document.getElementById(id);
+            const statusElement = document.getElementById(id + '-status');
+            
+            // Définir la source
+            audio.src = `assets/music/${id}.mp3`;
+            
+            // Événement de chargement réussi
+            audio.onloadeddata = function() {
+                statusElement.textContent = "✅ Le fichier est accessible";
+                statusElement.className = "status success";
+            };
+            
+            // Événement d'erreur
+            audio.onerror = function() {
+                statusElement.textContent = "❌ Erreur: Fichier non trouvé ou inaccessible";
+                statusElement.className = "status error";
+            };
+            
+            // Forcer le chargement
+            audio.load();
+        }
+        
+        // Fonction pour jouer un fichier audio
+        function playAudio(id) {
+            const audio = document.getElementById(id);
+            
+            // Si la source n'est pas définie, la définir
+            if (!audio.src) {
+                audio.src = `assets/music/${id}.mp3`;
+                audio.load();
+            }
+            
+            // Jouer l'audio
+            audio.play().catch(error => {
+                console.error(`Erreur lors de la lecture de ${id}.mp3:`, error);
+                const statusElement = document.getElementById(id + '-status');
+                statusElement.textContent = `❌ Erreur de lecture: ${error.message}`;
+                statusElement.className = "status error";
+            });
+        }
+        
+        // Tester tous les fichiers au chargement de la page
+        window.onload = function() {
+            const audioIds = ['background', 'overdrive', 'boss', 'victory', 'defeat'];
+            audioIds.forEach(id => testAudio(id));
+        };
+    </script>
+</body>
+</html> 

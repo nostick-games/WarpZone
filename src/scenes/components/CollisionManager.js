@@ -11,7 +11,6 @@ class CollisionManager {
         this.tempCanvas = null;
         this.tempContext = null;
         this.debugGraphics = null; // Pour le dessin de débogage
-        // console.log("[CollisionManager] Initialisé"); // Commenté
     }
 
     /**
@@ -22,15 +21,14 @@ class CollisionManager {
     getTextureFrame(sprite) {
         const textureKey = sprite && sprite.texture ? sprite.texture.key : 'unknown_texture';
 
-
         if (!sprite || !sprite.texture || !sprite.texture.source) {
-            console.warn(`[CM] getTextureFrame: Sprite, texture, ou source invalide pour ${textureKey}. Sprite:`, sprite); // Important warning
+            console.warn(`[CM] getTextureFrame: Sprite, texture, ou source invalide pour ${textureKey}.`);
             return null;
         }
         
         if (sprite.anims && sprite.anims.currentFrame) {
             if (!sprite.anims.currentFrame.frame) { 
-                 console.warn(`[CM] getTextureFrame: ${textureKey} - Voie de l'animation choisie, mais sprite.anims.currentFrame.frame est MANQUANTE. currentFrame:`, sprite.anims.currentFrame); // Important warning
+                 console.warn(`[CM] getTextureFrame: ${textureKey} - Voie de l'animation choisie, mais sprite.anims.currentFrame.frame est MANQUANTE.`);
                  return null; 
             }
             return sprite.anims.currentFrame.frame; 
@@ -38,7 +36,7 @@ class CollisionManager {
         
         const staticFrame = sprite.texture.get();
         if (!staticFrame) {
-            console.warn(`[CM] getTextureFrame: ${textureKey} - Voie de la texture statique choisie, mais sprite.texture.get() a retourné null/undefined. Texture:`, sprite.texture); // Important warning
+            console.warn(`[CM] getTextureFrame: ${textureKey} - Voie de la texture statique choisie, mais sprite.texture.get() a retourné null/undefined.`);
         }
         return staticFrame;
     }
@@ -53,7 +51,7 @@ class CollisionManager {
      */
     isPixelOpaque(frame, x, y, threshold = 10) {
         if (!frame || !frame.source || !frame.source.image) {
-            console.warn("[CollisionManager] Frame ou source d'image invalide pour isPixelOpaque. Frame:", frame); // Important warning
+            console.warn("[CollisionManager] Frame ou source d'image invalide pour isPixelOpaque.");
             return false; 
         }
 
@@ -81,7 +79,7 @@ class CollisionManager {
             return pixelData[3] > threshold;
 
         } catch (e) {
-            console.warn("[CollisionManager] Erreur lors de l'accès aux données de pixel:", e); // Important warning
+            console.warn("[CollisionManager] Erreur lors de l'accès aux données de pixel.");
             return true; 
         }
     }
@@ -119,7 +117,6 @@ class CollisionManager {
 
                 if (this.isPixelOpaque(frame1, localX1, localY1, alphaThreshold) &&
                     this.isPixelOpaque(frame2, localX2, localY2, alphaThreshold)) {
-                    // console.log(`[CM] checkPixelOverlap: PIXEL HIT! Global (${globalX.toFixed(1)},${globalY.toFixed(1)}) | ${sprite1.texture.key}_local (${localX1.toFixed(1)},${localY1.toFixed(1)}) | ${sprite2.texture.key}_local (${localX2.toFixed(1)},${localY2.toFixed(1)})`); // Commenté
                     return true;
                 }
             }
@@ -144,7 +141,7 @@ class CollisionManager {
             return null;
         }
         if (typeof objectA.getBounds !== 'function' || typeof objectB.getBounds !== 'function') {
-            console.warn("[CM] getCollisionIntersection: Un objet n'a pas de méthode getBounds."); // Important warning
+            console.warn("[CM] getCollisionIntersection: Un objet n'a pas de méthode getBounds.");
             return null;
         }
 
@@ -165,20 +162,16 @@ class CollisionManager {
             const frameB = this.getTextureFrame(objectB);
 
             if (!frameA || !frameB) {
-                console.warn(`[CM] getCollisionIntersection: Frame manquante pour pixel-perfect (${nameA}: ${!!frameA}, ${nameB}: ${!!frameB}). RETOURNE intersection rectangulaire comme fallback.`); // Important warning
+                console.warn(`[CM] getCollisionIntersection: Frame manquante pour pixel-perfect (${nameA}: ${!!frameA}, ${nameB}: ${!!frameB}). RETOURNE intersection rectangulaire comme fallback.`);
                 return intersection;
             }
             
-            // console.log("[CM] getCollisionIntersection: Passage à la vérification pixel-perfect..."); // Commenté
             if (this.checkPixelOverlap(objectA, objectB, frameA, frameB, intersection, alphaThreshold, pixelPerfectStep)) {
-                // console.log("[CM] getCollisionIntersection: Collision pixel-perfect CONFIRMÉE. RETOURNE intersection."); // Commenté
                 return intersection;
             } else {
-                // console.log("[CM] getCollisionIntersection: Collision pixel-perfect NON confirmée. RETOURNE null."); // Commenté
                 return null;
             }
         }
-        // console.log(`[CM] getCollisionIntersection: Chevauchement des rectangles englobants NON détecté pour ${nameA} et ${nameB}. RETOURNE null.`); // Commenté
         return null;
     }
     
@@ -240,7 +233,6 @@ class CollisionManager {
             this.debugGraphics.destroy();
             this.debugGraphics = null;
         }
-        // console.log("[CollisionManager] Détruit"); // Commenté
     }
 }
 

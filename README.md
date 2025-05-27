@@ -57,6 +57,14 @@ Puis ouvrez votre navigateur à l'adresse `http://localhost:8000`
 - Cursor (avec Claude 3.7/4)
 - Assets graphiques : [Pixel Space Shooter](https://mattwalkden.itch.io/space-shooter) par Matt Walkden
 
+## 🎶 Musiques
+
+- Background Music by [Serhii_Kliets](https://pixabay.com/users/serhii_kliets-36514165/)
+- Music in game by [u_613v2a5e29](https://pixabay.com/users/u_613v2a5e29-46648053/)
+- Boss music by [Montogoronto](https://pixabay.com/users/montogoronto-34345685/)
+- Victory music by [Mohamed_hassan](https://pixabay.com/users/mohamed_hassan-5229782/)
+- Game Over by [MelodyOfJanJers](https://pixabay.com/users/melodyofjanjers-36752802/)
+
 ## 🎯 À venir
 
 - Musique et bruitages

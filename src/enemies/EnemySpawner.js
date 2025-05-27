@@ -247,6 +247,17 @@ class EnemySpawner {
             // Ajouter à la liste des ennemis
             this.enemyManager.enemies.push(boss);
             
+            // Jouer la musique du boss si l'audioManager est disponible
+            if (this.scene.audioManager) {
+                console.log(`[EnemySpawner] Boss spawned, changing music to boss theme`);
+                this.scene.audioManager.playMusic('boss', {
+                    volume: 0.7,
+                    loop: true
+                });
+            } else {
+                console.warn(`[EnemySpawner] audioManager not found in scene!`);
+            }
+            
         } catch (error) {
             // Erreur silencieuse
         }

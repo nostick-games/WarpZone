@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test des Assets BlueBeetle</title>
+    <style>
+        body {
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            border: 2px solid #444;
+            background-color: #333;
+            image-rendering: pixelated;
+        }
+        .asset-info {
+            margin: 10px;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+        }
+        .large {
+            transform: scale(4);
+            margin: 40px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test des Assets BlueBeetle</h1>
+    
+    <div class="asset-info">
+        <h2>BlueBeetle_degat1.png</h2>
+        <p>Dimensions attendues: 128x8 (16 frames de 8x8)</p>
+        <img src="assets/enemies/boss/BlueBeetle_degat1.png" alt="BlueBeetle_degat1" />
+        <img src="assets/enemies/boss/BlueBeetle_degat1.png" alt="BlueBeetle_degat1" class="large" />
+    </div>
+    
+    <div class="asset-info">
+        <h2>BlueBeetle_degat2.png</h2>
+        <p>Dimensions attendues: 128x8 (16 frames de 8x8)</p>
+        <img src="assets/enemies/boss/BlueBeetle_degat2.png" alt="BlueBeetle_degat2" />
+        <img src="assets/enemies/boss/BlueBeetle_degat2.png" alt="BlueBeetle_degat2" class="large" />
+    </div>
+    
+    <div class="asset-info">
+        <h2>bomb_explosion.png</h2>
+        <p>Dimensions attendues: 960x64 (15 frames de 64x64)</p>
+        <img src="assets/items/bomb_explosion.png" alt="bomb_explosion" />
+    </div>
+    
+    <script>
+        // Vérification des dimensions des images après chargement
+        window.onload = function() {
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                img.onload = function() {
+                    const infoElement = img.previousElementSibling || img.parentElement.querySelector('p');
+                    infoElement.textContent += ` | Dimensions réelles: ${img.naturalWidth}x${img.naturalHeight}`;
+                };
+            });
+        };
+    </script>
+</body>
+</html> 

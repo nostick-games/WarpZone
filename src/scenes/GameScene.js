@@ -6,6 +6,7 @@ import Asteroid from '../items/Asteroid.js';
 import { PowerupManager, AsteroidManager, CollisionManager, EnemyCounter, UIManager, BombManager, EffectsManager, ProjectileManager } from './components/index.js';
 import EnemyBullet from '../enemies/EnemyBullet.js';
 import gameManager from '../Game.js';
+import { AudioManager } from '../audio/index.js';
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -15,6 +16,9 @@ class GameScene extends Phaser.Scene {
         this.score = 0;
         this.stars = 0; // Compteur d'étoiles collectées
         this.gameOver = false;
+        
+        // Gestionnaire audio
+        this.audioManager = null;
         
         // Pour les astéroïdes et powerups
         this.asteroids = [];
@@ -106,6 +110,12 @@ class GameScene extends Phaser.Scene {
         this.BlueBeetle = window.BlueBeetle; // Ajouter le boss BlueBeetle
         this.EnemyManager = window.EnemyManager;
         this.EnemyBullet = window.EnemyBullet; // Ajouter EnemyBullet
+        
+        // Initialiser le gestionnaire audio
+        this.audioManager = new AudioManager(this);
+        
+        // Précharger les ressources audio
+        this.audioManager.preloadAudio(this);
         
 
         
@@ -289,6 +299,15 @@ class GameScene extends Phaser.Scene {
                         // Normalement, EnemyManager utilisera this.scene.collisionManager directement
                         // donc pas besoin d'assignation explicite ici sauf cas particulier.
                     }
+                    
+                    // Arrêter toute musique précédente avant de jouer la musique du jeu
+                    this.audioManager.stopCurrentMusic(true);
+                    
+                    // Jouer la musique du jeu avec un fondu enchaîné depuis la musique précédente
+                    this.audioManager.playMusic('overdrive', {
+                        volume: 0.7,
+                        loop: true
+                    });
                 }
             });
         });
@@ -637,14 +656,18 @@ class GameScene extends Phaser.Scene {
         if (this.gameOver) return;
         this.gameOver = true;
 
-
         // Nettoyer les effets du bonus X2 immédiatement
         this.effectsManager.clearBonusX2Effects();
 
-        // Arrêter la musique de fond si elle joue
-        if (this.backgroundMusic && this.backgroundMusic.isPlaying) {
-            this.backgroundMusic.stop();
-        }
+        // Arrêter la musique en cours avant de jouer la musique de défaite
+        this.audioManager.stopCurrentMusic(true);
+        
+        // Jouer la musique de défaite
+        console.log(`[GameScene] Game over, lancement de la musique de défaite`);
+        this.audioManager.playMusic('defeat', {
+            volume: 0.7,
+            loop: false
+        });
 
         // Effet de secousse de la caméra
         this.cameras.main.shake(500, 0.02); // Secouer pendant 500ms avec une intensité de 0.02
@@ -974,6 +997,12 @@ class GameScene extends Phaser.Scene {
             this.projectileManager = null;
         }
         
+        // Nettoyer l'audio manager
+        if (this.audioManager) {
+            this.audioManager.destroy();
+            this.audioManager = null;
+        }
+        
         // Autres nettoyages potentiels de la scène...
     }
 
@@ -1035,6 +1064,16 @@ class GameScene extends Phaser.Scene {
         
         // Marquer la partie comme terminée
         this.gameOver = true;
+        
+        // Arrêter la musique en cours avant de jouer la musique de victoire
+        this.audioManager.stopCurrentMusic(true);
+        
+        // Jouer la musique de victoire
+        console.log(`[GameScene] Boss vaincu, lancement de la musique de victoire`);
+        this.audioManager.playMusic('victory', {
+            volume: 0.7,
+            loop: false
+        });
         
         // Arrêter les mises à jour et nettoyer
         if (this.enemyManager) {
